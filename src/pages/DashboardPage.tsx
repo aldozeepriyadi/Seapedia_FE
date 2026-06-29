@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card'
 import { useAuth } from '../context/AuthContext'
 import { Role } from '../types'
 import { SellerDashboardPage } from './SellerDashboardPage'
+import { BuyerDashboardPage } from './BuyerDashboardPage'
 
 const roleConfig: Record<
   Role,
@@ -15,8 +16,8 @@ const roleConfig: Record<
     icon: UserRound,
     title: 'Buyer session',
     summary:
-      'Buyer dapat masuk ke sistem dan tetap melihat katalog publik dengan konteks role yang jelas.',
-    nextLevel: ['Active role selected', 'Public catalog access', 'Private actions hidden'],
+      'Buyer dapat mengelola wallet, keranjang, checkout, dan order history pada Level 3.',
+    nextLevel: ['Wallet', 'Cart', 'Checkout'],
   },
   SELLER: {
     icon: Store,
@@ -46,6 +47,10 @@ export function DashboardPage() {
 
   if (!user?.activeRole) return null
 
+  if (user.activeRole === 'BUYER' && token) {
+    return <BuyerDashboardPage token={token} />
+  }
+
   if (user.activeRole === 'SELLER' && token) {
     return <SellerDashboardPage token={token} />
   }
@@ -65,7 +70,7 @@ export function DashboardPage() {
             />
             <div className="relative flex h-full min-h-[320px] flex-col justify-between">
               <Badge className="w-fit border-white/20 bg-white/15 text-white">
-                Level 2 active role
+                Level 3 active role
               </Badge>
               <div>
                 <Icon size={34} />
@@ -106,7 +111,7 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="flex items-center gap-3">
               <ClipboardCheck className="text-harbor" size={22} />
-              <h2 className="text-lg font-bold text-ink">Level 2 boundary</h2>
+              <h2 className="text-lg font-bold text-ink">Level 3 boundary</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Dashboard ini sengaja hanya menjadi entry point role. Area privat sudah

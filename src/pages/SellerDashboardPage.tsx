@@ -4,6 +4,7 @@ import {
   Package,
   Pencil,
   Plus,
+  ReceiptText,
   RefreshCw,
   Store as StoreIcon,
   Trash2,
@@ -16,7 +17,7 @@ import { Input } from '../components/ui/Input'
 import { apiFetch } from '../lib/api'
 import { showConfirm, showError, showSuccess, showToast, Swal } from '../lib/alerts'
 import { formatPrice } from '../lib/format'
-import { Product, Store } from '../types'
+import { OrderSummary, Product, Store } from '../types'
 
 type ProductPayload = {
   name: string
@@ -32,6 +33,7 @@ export function SellerDashboardPage({ token }: { token: string }) {
   const [storeName, setStoreName] = useState('')
   const [storeDescription, setStoreDescription] = useState('')
   const [products, setProducts] = useState<Product[]>([])
+  const [orders, setOrders] = useState<OrderSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [savingStore, setSavingStore] = useState(false)
   const [error, setError] = useState('')
@@ -41,12 +43,13 @@ export function SellerDashboardPage({ token }: { token: string }) {
     setError('')
 
     try {
-      const response = await apiFetch<{ store: Store | null; products: Product[] }>(
-        '/seller/products',
-        { token },
-      )
+      const [response, orderResponse] = await Promise.all([
+        apiFetch<{ store: Store | null; products: Product[] }>('/seller/products', { token }),
+        apiFetch<{ orders: OrderSummary[] }>('/seller/orders', { token }),
+      ])
       setStore(response.store)
       setProducts(response.products)
+      setOrders(orderResponse.orders)
       setStoreName(response.store?.storeName ?? '')
       setStoreDescription(response.store?.description ?? '')
     } catch (err) {
@@ -144,12 +147,11 @@ export function SellerDashboardPage({ token }: { token: string }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Badge className="border-emerald-100 bg-emerald-50 text-harbor">
-            Level 2 Seller Experience
+            Level 3 Seller Experience
           </Badge>
           <h1 className="mt-3 text-3xl font-bold text-ink">Seller workspace</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Kelola identitas store dan produk milik seller aktif. Produk yang dibuat di sini
-            langsung muncul di katalog publik.
+            Kelola store dan produk, lalu pantau incoming orders dari checkout buyer.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -311,6 +313,59 @@ export function SellerDashboardPage({ token }: { token: string }) {
           <Link to="/products">
             <Button variant="secondary">Open public catalog</Button>
           </Link>
+        </div>
+      </Card>
+
+      <Card className="mt-6 overflow-hidden shadow-soft">
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <ReceiptText className="mt-0.5 text-harbor" size={21} />
+            <div>
+              <h2 className="font-bold text-ink">Incoming orders</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Read-only pada Level 3. Seller processing akan masuk level berikutnya.
+              </p>
+            </div>
+          </div>
+          <Badge>{orders.length} orders</Badge>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Buyer</th>
+                <th className="px-5 py-3">Delivery</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Total</th>
+                <th className="px-5 py-3">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {orders.map((order) => (
+                <tr key={order.id} className="bg-white">
+                  <td className="px-5 py-3 font-bold text-ink">{order.buyerName}</td>
+                  <td className="px-5 py-3 text-slate-700">{order.deliveryMethod}</td>
+                  <td className="px-5 py-3">
+                    <Badge>{order.status}</Badge>
+                  </td>
+                  <td className="px-5 py-3 font-bold text-harbor">
+                    {formatPrice(order.finalTotal)}
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {new Date(order.createdAt).toLocaleString('id-ID')}
+                  </td>
+                </tr>
+              ))}
+              {orders.length === 0 && (
+                <tr>
+                  <td className="px-5 py-8 text-center text-slate-600" colSpan={5}>
+                    Belum ada pesanan masuk.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
     </section>

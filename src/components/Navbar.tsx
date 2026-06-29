@@ -1,4 +1,4 @@
-import { LayoutDashboard, Menu, PackageSearch, Store, UserRound, X } from 'lucide-react'
+import { LayoutDashboard, Menu, PackageSearch, ShoppingCart, Store, UserRound, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -82,6 +82,12 @@ export function Navbar() {
               <Button variant="ghost" onClick={() => navigate('/profile')}>
                 Profile
               </Button>
+              {user.activeRole === 'BUYER' && (
+                <Button variant="secondary" onClick={() => navigate('/keranjang')}>
+                  <ShoppingCart size={16} />
+                  Keranjang
+                </Button>
+              )}
               <Button variant="danger" onClick={handleLogout}>
                 Logout
               </Button>
@@ -141,6 +147,15 @@ export function Navbar() {
                 >
                   Profile
                 </Link>
+                {user.activeRole === 'BUYER' && (
+                  <Link
+                    to="/keranjang"
+                    className="rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                    onClick={() => setOpen(false)}
+                  >
+                    Keranjang
+                  </Link>
+                )}
                 <Button variant="danger" onClick={handleLogout}>
                   Logout
                 </Button>
@@ -155,7 +170,7 @@ export function Navbar() {
             )}
             <div className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
               <PackageSearch size={14} />
-              Level 2 marketplace foundation
+              Level 3 marketplace foundation
             </div>
           </div>
         </div>

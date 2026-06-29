@@ -10,8 +10,8 @@ export function PageLayout() {
       </main>
       <footer className="border-t border-slate-200 bg-white">
         <div className="page-shell flex flex-col gap-2 py-6 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-          <p>SEAPEDIA Level 2 marketplace revision</p>
-          <p>Public catalog, authentication, role awareness, and application reviews</p>
+          <p>SEAPEDIA Level 3 marketplace revision</p>
+          <p>Catalog, seller products, buyer wallet, cart, checkout, and basic orders</p>
         </div>
       </footer>
     </div>

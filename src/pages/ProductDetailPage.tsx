@@ -1,17 +1,22 @@
-import { ArrowLeft, Eye, Package, ShieldCheck, Store } from 'lucide-react'
+import { ArrowLeft, Eye, Package, ShieldCheck, ShoppingCart, Store } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { apiFetch } from '../lib/api'
+import { showError, Swal } from '../lib/alerts'
 import { formatPrice } from '../lib/format'
 import { Product } from '../types'
+import { useAuth } from '../context/AuthContext'
 
 export function ProductDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { user, token } = useAuth()
   const [product, setProduct] = useState<Product | null>(null)
   const [detailError, setDetailError] = useState('')
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -37,6 +42,35 @@ export function ProductDetailPage() {
 
   if (!product) {
     return <section className="page-shell py-12 text-sm text-slate-600">Memuat produk...</section>
+  }
+
+  async function addToCart() {
+    if (!product || !token) return
+    setAdding(true)
+
+    try {
+      await apiFetch('/buyer/cart/items', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+      })
+      const result = await Swal.fire({
+        icon: 'success',
+        title: 'Masuk keranjang',
+        text: 'Produk berhasil ditambahkan ke keranjang.',
+        showCancelButton: true,
+        confirmButtonText: 'Lihat keranjang',
+        cancelButtonText: 'Lanjut belanja',
+        confirmButtonColor: '#0f766e',
+        cancelButtonColor: '#78716c',
+      })
+      if (result.isConfirmed) navigate('/keranjang')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Produk gagal ditambahkan.'
+      await showError('Add to cart gagal', message)
+    } finally {
+      setAdding(false)
+    }
   }
 
   return (
@@ -97,19 +131,30 @@ export function ProductDetailPage() {
               <div>
                 <h2 className="font-bold text-ink">Public catalog</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Guest dan user login boleh melihat produk. Aksi privat marketplace tidak
-                  ditampilkan pada folder revisi Level 2 ini.
+                  Guest boleh melihat produk. Buyer dapat menambahkan produk ke keranjang
+                  dengan rule single-store.
                 </p>
               </div>
             </div>
           </Card>
 
-          <Link to="/products">
-            <Button className="w-full justify-center">
-              <Eye size={16} />
-              Continue browsing
+          {user?.activeRole === 'BUYER' ? (
+            <Button
+              className="w-full justify-center"
+              disabled={adding || product.stock <= 0}
+              onClick={addToCart}
+            >
+              <ShoppingCart size={16} />
+              {adding ? 'Adding...' : 'Add to cart'}
             </Button>
-          </Link>
+          ) : (
+            <Link to="/products">
+              <Button className="w-full justify-center">
+                <Eye size={16} />
+                Continue browsing
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </section>

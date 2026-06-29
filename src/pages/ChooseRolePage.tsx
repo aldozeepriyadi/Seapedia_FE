@@ -7,7 +7,7 @@ import { Card } from '../components/ui/Card'
 
 const roleCopy: Record<Role, string> = {
   ADMIN: 'Konteks admin dikenali untuk pemisahan akses internal.',
-  BUYER: 'Konteks buyer dikenali untuk sesi marketplace publik.',
+  BUYER: 'Buyer dapat mengelola wallet, keranjang, checkout, dan order history.',
   SELLER: 'Seller dapat membuat store dan mengelola produk pada Level 2.',
   DRIVER: 'Konteks driver dikenali untuk fondasi delivery role.',
 }
