@@ -16,10 +16,20 @@ export type Product = {
   name: string
   price: number
   storeName: string
+  storeDescription: string
   category: string
   stock: number
   image: string
   description: string
+}
+
+export type Store = {
+  id: string
+  sellerId: string
+  storeName: string
+  description: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type AppReview = {

@@ -19,7 +19,7 @@ const roleHighlights = [
   {
     icon: Store,
     label: 'Seller',
-    text: 'Seller identity is recognized before store tools are added.',
+    text: 'Create a store and manage products from the seller workspace.',
   },
   {
     icon: Truck,

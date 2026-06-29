@@ -70,8 +70,8 @@ export function ProductDetailPage() {
               <div>
                 <p className="font-bold text-ink">{product.storeName}</p>
                 <p className="text-sm text-slate-600">
-                  Store information ditampilkan agar katalog terasa seperti marketplace
-                  multi-seller, bukan single-store catalog.
+                  {product.storeDescription ||
+                    'Store information ditampilkan agar katalog terasa seperti marketplace multi-seller.'}
                 </p>
               </div>
             </div>
@@ -95,10 +95,10 @@ export function ProductDetailPage() {
             <div className="flex gap-3">
               <ShieldCheck className="mt-0.5 text-harbor" size={20} />
               <div>
-                <h2 className="font-bold text-ink">Level 1 read-only catalog</h2>
+                <h2 className="font-bold text-ink">Public catalog</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   Guest dan user login boleh melihat produk. Aksi privat marketplace tidak
-                  ditampilkan pada folder revisi Level 1 ini.
+                  ditampilkan pada folder revisi Level 2 ini.
                 </p>
               </div>
             </div>

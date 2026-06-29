@@ -155,7 +155,7 @@ export function Navbar() {
             )}
             <div className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
               <PackageSearch size={14} />
-              Level 1 marketplace foundation
+              Level 2 marketplace foundation
             </div>
           </div>
         </div>

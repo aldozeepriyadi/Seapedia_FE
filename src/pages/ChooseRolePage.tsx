@@ -6,10 +6,10 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 
 const roleCopy: Record<Role, string> = {
-  ADMIN: 'Konteks admin dikenali sejak Level 1 untuk pemisahan akses internal.',
-  BUYER: 'Konteks buyer dikenali sejak Level 1 untuk sesi marketplace publik.',
-  SELLER: 'Konteks seller dikenali sejak Level 1 untuk fondasi multi-seller.',
-  DRIVER: 'Konteks driver dikenali sejak Level 1 untuk fondasi delivery role.',
+  ADMIN: 'Konteks admin dikenali untuk pemisahan akses internal.',
+  BUYER: 'Konteks buyer dikenali untuk sesi marketplace publik.',
+  SELLER: 'Seller dapat membuat store dan mengelola produk pada Level 2.',
+  DRIVER: 'Konteks driver dikenali untuk fondasi delivery role.',
 }
 
 export function ChooseRolePage() {

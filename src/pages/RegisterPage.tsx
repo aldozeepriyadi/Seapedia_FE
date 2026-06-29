@@ -10,7 +10,7 @@ import { Input } from '../components/ui/Input'
 
 const roleOptions: { role: Role; label: string; text: string }[] = [
   { role: 'BUYER', label: 'Buyer', text: 'Marketplace browsing session' },
-  { role: 'SELLER', label: 'Seller', text: 'Multi-seller identity' },
+  { role: 'SELLER', label: 'Seller', text: 'Store and product management' },
   { role: 'DRIVER', label: 'Driver', text: 'Delivery role identity' },
 ]
 

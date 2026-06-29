@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { useAuth } from '../context/AuthContext'
 import { Role } from '../types'
+import { SellerDashboardPage } from './SellerDashboardPage'
 
 const roleConfig: Record<
   Role,
@@ -21,8 +22,8 @@ const roleConfig: Record<
     icon: Store,
     title: 'Seller session',
     summary:
-      'Seller sudah dikenali sebagai role terpisah tanpa membuka tools operasional pada Level 1.',
-    nextLevel: ['Active role selected', 'Seller context visible', 'Private actions hidden'],
+      'Seller dapat membuat store dan mengelola produk miliknya pada Level 2.',
+    nextLevel: ['Store management', 'Product CRUD', 'Public catalog integration'],
   },
   DRIVER: {
     icon: Truck,
@@ -41,9 +42,13 @@ const roleConfig: Record<
 }
 
 export function DashboardPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   if (!user?.activeRole) return null
+
+  if (user.activeRole === 'SELLER' && token) {
+    return <SellerDashboardPage token={token} />
+  }
 
   const config = roleConfig[user.activeRole]
   const Icon = config.icon
@@ -60,7 +65,7 @@ export function DashboardPage() {
             />
             <div className="relative flex h-full min-h-[320px] flex-col justify-between">
               <Badge className="w-fit border-white/20 bg-white/15 text-white">
-                Level 1 active role
+                Level 2 active role
               </Badge>
               <div>
                 <Icon size={34} />
@@ -101,7 +106,7 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="flex items-center gap-3">
               <ClipboardCheck className="text-harbor" size={22} />
-              <h2 className="text-lg font-bold text-ink">Level 1 boundary</h2>
+              <h2 className="text-lg font-bold text-ink">Level 2 boundary</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Dashboard ini sengaja hanya menjadi entry point role. Area privat sudah
