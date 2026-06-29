@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Home, MapPin, PackageCheck } from 'lucide-react'
+import { ArrowLeft, Home, MapPin, PackageCheck, TicketPercent } from 'lucide-react'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -25,6 +25,8 @@ export function CheckoutPage() {
   const [addresses, setAddresses] = useState<BuyerAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState('')
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('Regular')
+  const [discountCode, setDiscountCode] = useState('')
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState('')
   const [checkout, setCheckout] = useState<CheckoutSummary | null>(null)
   const [addressForm, setAddressForm] = useState({
     recipientName: '',
@@ -42,6 +44,23 @@ export function CheckoutPage() {
     [addresses, selectedAddressId],
   )
 
+  async function previewCheckout(nextDiscountCode = appliedDiscountCode) {
+    if (!token) return
+
+    const response = await apiFetch<{ checkout: CheckoutSummary }>('/buyer/checkout/preview', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({
+        addressId: selectedAddressId || 'preview',
+        deliveryMethod,
+        discountCode: nextDiscountCode.trim() || undefined,
+      }),
+    })
+    setCheckout(response.checkout)
+    setError('')
+    return response.checkout
+  }
+
   async function loadCheckoutData() {
     if (!token) return
     setLoading(true)
@@ -53,18 +72,20 @@ export function CheckoutPage() {
         apiFetch<{ wallet: WalletSummary }>('/buyer/wallet', { token }),
         apiFetch<{ addresses: BuyerAddress[] }>('/buyer/addresses', { token }),
       ])
+      const defaultAddressId = addressResponse.addresses[0]?.id || ''
       setCart(cartResponse.cart)
       setWallet(walletResponse.wallet)
       setAddresses(addressResponse.addresses)
-      setSelectedAddressId((current) => current || addressResponse.addresses[0]?.id || '')
+      setSelectedAddressId((current) => current || defaultAddressId)
 
       if (cartResponse.cart.items.length > 0) {
         const preview = await apiFetch<{ checkout: CheckoutSummary }>('/buyer/checkout/preview', {
           method: 'POST',
           token,
           body: JSON.stringify({
-            addressId: addressResponse.addresses[0]?.id || 'preview',
+            addressId: defaultAddressId || 'preview',
             deliveryMethod,
+            discountCode: appliedDiscountCode.trim() || undefined,
           }),
         })
         setCheckout(preview.checkout)
@@ -87,11 +108,42 @@ export function CheckoutPage() {
     apiFetch<{ checkout: CheckoutSummary }>('/buyer/checkout/preview', {
       method: 'POST',
       token,
-      body: JSON.stringify({ addressId: selectedAddressId || 'preview', deliveryMethod }),
+      body: JSON.stringify({
+        addressId: selectedAddressId || 'preview',
+        deliveryMethod,
+        discountCode: appliedDiscountCode.trim() || undefined,
+      }),
     })
       .then((response) => setCheckout(response.checkout))
       .catch((err) => setError(err instanceof Error ? err.message : 'Preview checkout gagal.'))
-  }, [cart?.items.length, deliveryMethod, selectedAddressId, token])
+  }, [appliedDiscountCode, cart?.items.length, deliveryMethod, selectedAddressId, token])
+
+  async function handleApplyDiscount(event: FormEvent) {
+    event.preventDefault()
+    if (!token || !cart?.items.length) return
+
+    setSubmitting(true)
+    try {
+      const normalizedCode = discountCode.trim().toUpperCase()
+      const preview = await previewCheckout(normalizedCode)
+      setAppliedDiscountCode(normalizedCode)
+
+      if (normalizedCode && preview?.discountAmount) {
+        await showSuccess(
+          'Kode diskon terpasang',
+          `${preview.discountType === 'VOUCHER' ? 'Voucher' : 'Promo'} ${preview.discountCode} mengurangi total ${formatPrice(preview.discountAmount)}.`,
+        )
+      } else {
+        await showSuccess('Kode diskon dikosongkan', 'Checkout kembali memakai harga normal.')
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Kode diskon tidak valid.'
+      setError(message)
+      await showError('Kode diskon gagal', message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   async function handleAddressSubmit(event: FormEvent) {
     event.preventDefault()
@@ -138,7 +190,11 @@ export function CheckoutPage() {
         {
           method: 'POST',
           token,
-          body: JSON.stringify({ addressId: selectedAddressId, deliveryMethod }),
+          body: JSON.stringify({
+            addressId: selectedAddressId,
+            deliveryMethod,
+            discountCode: appliedDiscountCode.trim() || undefined,
+          }),
         },
       )
       await showSuccess(
@@ -292,8 +348,35 @@ export function CheckoutPage() {
               <div className="mt-5 grid gap-3 text-sm">
                 <SummaryRow label="Wallet" value={formatPrice(wallet?.balance ?? 0)} />
                 <SummaryRow label="Subtotal" value={formatPrice(checkout?.subtotal ?? cart?.subtotal ?? 0)} />
+                <form className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3" onSubmit={handleApplyDiscount}>
+                  <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Voucher / Promo
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <Input
+                      value={discountCode}
+                      onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
+                      placeholder="WELCOME50 / PROMO25"
+                    />
+                    <Button variant="secondary" disabled={submitting || !cart?.items.length}>
+                      <TicketPercent size={16} />
+                      Apply
+                    </Button>
+                  </div>
+                  {checkout?.discountCode && (
+                    <p className="text-xs font-semibold text-harbor">
+                      {checkout.discountType === 'VOUCHER' ? 'Voucher' : 'Promo'} {checkout.discountCode} aktif.
+                    </p>
+                  )}
+                </form>
+                {(checkout?.discountAmount ?? 0) > 0 && (
+                  <>
+                    <SummaryRow label="Discount" value={`-${formatPrice(checkout?.discountAmount ?? 0)}`} />
+                    <SummaryRow label="Taxable subtotal" value={formatPrice(checkout?.taxableAmount ?? 0)} />
+                  </>
+                )}
                 <SummaryRow label="Delivery" value={formatPrice(checkout?.deliveryFee ?? 0)} />
-                <SummaryRow label="PPN 11%" value={formatPrice(checkout?.ppn ?? 0)} />
+                <SummaryRow label="PPN 12%" value={formatPrice(checkout?.ppn ?? 0)} />
                 <div className="border-t border-slate-200 pt-3">
                   <SummaryRow label="Final total" value={formatPrice(checkout?.finalTotal ?? 0)} strong />
                 </div>

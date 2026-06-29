@@ -74,6 +74,10 @@ export type CheckoutSummary = {
   subtotal: number
   deliveryMethod: DeliveryMethod
   deliveryFee: number
+  discountCode: string | null
+  discountType: string | null
+  discountAmount: number
+  taxableAmount: number
   ppn: number
   ppnRate: number
   finalTotal: number
@@ -89,6 +93,10 @@ export type OrderSummary = {
   deliveryMethod: DeliveryMethod
   deliveryFee: number
   subtotal: number
+  discountCode: string | null
+  discountType: string | null
+  discountAmount: number
+  taxableAmount: number
   ppn: number
   finalTotal: number
   status: string
@@ -116,8 +124,26 @@ export type OrderDetail = {
 export type BuyerReport = {
   orderCount: number
   totalSpending: number
+  totalDiscount: number
   totalPpn: number
   totalDeliveryFee: number
+}
+
+export type SellerReport = {
+  orderCount: number
+  totalIncome: number
+  totalDiscount: number
+  pendingOrders: number
+  processedOrders: number
+}
+
+export type DiscountResource = {
+  id: string
+  code: string
+  discountAmount: number
+  expiryDate: string
+  remainingUsage?: number
+  createdAt: string
 }
 
 export type Store = {

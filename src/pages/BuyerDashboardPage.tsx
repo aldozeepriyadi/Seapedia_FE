@@ -1,6 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CreditCard, PackageCheck, ReceiptText, RefreshCw, ShoppingCart } from 'lucide-react'
+import { BadgePercent, CreditCard, PackageCheck, ReceiptText, RefreshCw, ShoppingCart } from 'lucide-react'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -75,11 +75,11 @@ export function BuyerDashboardPage({ token }: { token: string }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Badge className="border-emerald-100 bg-emerald-50 text-harbor">
-            Level 3 Buyer Experience
+            Level 4 Buyer Report
           </Badge>
           <h1 className="mt-3 text-3xl font-bold text-ink">Buyer dashboard</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Wallet, keranjang, dan order history buyer. Alamat pengiriman diisi pada checkout.
+            Wallet, keranjang, order history, dan ringkasan spending buyer dari checkout.
           </p>
         </div>
         <Button variant="secondary" onClick={loadBuyerData}>
@@ -90,11 +90,12 @@ export function BuyerDashboardPage({ token }: { token: string }) {
 
       {error && <p className="mt-6 text-sm font-semibold text-red-600">{error}</p>}
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
         <Metric icon={<CreditCard size={20} />} label="Wallet" value={formatPrice(wallet?.balance ?? 0)} />
         <Metric icon={<ShoppingCart size={20} />} label="Cart subtotal" value={formatPrice(cart?.subtotal ?? 0)} />
         <Metric icon={<ReceiptText size={20} />} label="Orders" value={String(report?.orderCount ?? 0)} />
         <Metric icon={<PackageCheck size={20} />} label="Total spending" value={formatPrice(report?.totalSpending ?? 0)} />
+        <Metric icon={<BadgePercent size={20} />} label="Discount saved" value={formatPrice(report?.totalDiscount ?? 0)} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
@@ -158,6 +159,11 @@ export function BuyerDashboardPage({ token }: { token: string }) {
                     <p className="mt-1 text-sm text-slate-600">
                       {new Date(order.createdAt).toLocaleString('id-ID')} - {order.deliveryMethod}
                     </p>
+                    {(order.discountAmount ?? 0) > 0 && (
+                      <p className="mt-1 text-xs font-semibold text-harbor">
+                        Diskon {order.discountCode}: -{formatPrice(order.discountAmount)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 sm:justify-end">
                     <p className="font-bold text-harbor">{formatPrice(order.finalTotal)}</p>

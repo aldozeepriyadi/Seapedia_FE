@@ -1,11 +1,10 @@
 import { ClipboardCheck, PackageSearch, ShieldCheck, Store, Truck, UserRound } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { useAuth } from '../context/AuthContext'
 import { Role } from '../types'
-import { SellerDashboardPage } from './SellerDashboardPage'
 import { BuyerDashboardPage } from './BuyerDashboardPage'
 
 const roleConfig: Record<
@@ -16,15 +15,15 @@ const roleConfig: Record<
     icon: UserRound,
     title: 'Buyer session',
     summary:
-      'Buyer dapat mengelola wallet, keranjang, checkout, dan order history pada Level 3.',
-    nextLevel: ['Wallet', 'Cart', 'Checkout'],
+      'Buyer dapat mengelola wallet, keranjang, checkout voucher/promo, dan spending report pada Level 4.',
+    nextLevel: ['Wallet', 'Cart', 'Checkout', 'Spending report'],
   },
   SELLER: {
     icon: Store,
     title: 'Seller session',
     summary:
-      'Seller dapat membuat store dan mengelola produk miliknya pada Level 2.',
-    nextLevel: ['Store management', 'Product CRUD', 'Public catalog integration'],
+      'Seller dapat membuat store, mengelola produk, memproses order, dan melihat income report pada Level 4.',
+    nextLevel: ['Store management', 'Product CRUD', 'Order processing', 'Income report'],
   },
   DRIVER: {
     icon: Truck,
@@ -37,8 +36,8 @@ const roleConfig: Record<
     icon: ShieldCheck,
     title: 'Admin session',
     summary:
-      'Admin sudah tersedia untuk membuktikan pemisahan role dan sesi internal.',
-    nextLevel: ['Active role selected', 'Admin context visible', 'Private actions hidden'],
+      'Admin dapat generate voucher dan promo untuk checkout buyer pada Level 4.',
+    nextLevel: ['Voucher management', 'Promo management', 'Discount validation'],
   },
 }
 
@@ -52,7 +51,11 @@ export function DashboardPage() {
   }
 
   if (user.activeRole === 'SELLER' && token) {
-    return <SellerDashboardPage token={token} />
+    return <Navigate to="/seller" replace />
+  }
+
+  if (user.activeRole === 'ADMIN' && token) {
+    return <Navigate to="/admin" replace />
   }
 
   const config = roleConfig[user.activeRole]
@@ -70,7 +73,7 @@ export function DashboardPage() {
             />
             <div className="relative flex h-full min-h-[320px] flex-col justify-between">
               <Badge className="w-fit border-white/20 bg-white/15 text-white">
-                Level 3 active role
+                Level 4 active role
               </Badge>
               <div>
                 <Icon size={34} />
@@ -111,7 +114,7 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="flex items-center gap-3">
               <ClipboardCheck className="text-harbor" size={22} />
-              <h2 className="text-lg font-bold text-ink">Level 3 boundary</h2>
+              <h2 className="text-lg font-bold text-ink">Level 4 boundary</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Dashboard ini sengaja hanya menjadi entry point role. Area privat sudah

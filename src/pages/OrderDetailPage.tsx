@@ -86,8 +86,17 @@ export function OrderDetailPage() {
                 <h2 className="font-bold text-ink">Payment summary</h2>
                 <div className="mt-4 grid gap-3 text-sm">
                   <SummaryRow label="Subtotal" value={formatPrice(detail.order.subtotal)} />
+                  {(detail.order.discountAmount ?? 0) > 0 && (
+                    <>
+                      <SummaryRow
+                        label={`Discount ${detail.order.discountCode ?? ''}`}
+                        value={`-${formatPrice(detail.order.discountAmount)}`}
+                      />
+                      <SummaryRow label="Taxable subtotal" value={formatPrice(detail.order.taxableAmount)} />
+                    </>
+                  )}
                   <SummaryRow label="Delivery" value={formatPrice(detail.order.deliveryFee)} />
-                  <SummaryRow label="PPN" value={formatPrice(detail.order.ppn)} />
+                  <SummaryRow label="PPN 12%" value={formatPrice(detail.order.ppn)} />
                   <div className="border-t border-slate-200 pt-3">
                     <SummaryRow label="Total" value={formatPrice(detail.order.finalTotal)} strong />
                   </div>
@@ -106,6 +115,9 @@ export function OrderDetailPage() {
                     <div key={item.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
                       <p className="font-bold text-ink">{item.status}</p>
                       <p className="mt-1 text-sm text-slate-600">{item.note}</p>
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        {new Date(item.createdAt).toLocaleString('id-ID')}
+                      </p>
                     </div>
                   ))}
                 </div>

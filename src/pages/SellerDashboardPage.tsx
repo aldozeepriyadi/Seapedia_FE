@@ -1,6 +1,11 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, ReactNode, useEffect, useState } from 'react'
 import {
+  BadgePercent,
+  CheckCircle2,
+  CircleDollarSign,
+  Clock3,
   Eye,
+  LayoutDashboard,
   Package,
   Pencil,
   Plus,
@@ -14,10 +19,11 @@ import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
+import { WorkspacePanel } from '../components/WorkspacePanel'
 import { apiFetch } from '../lib/api'
 import { showConfirm, showError, showSuccess, showToast, Swal } from '../lib/alerts'
 import { formatPrice } from '../lib/format'
-import { OrderSummary, Product, Store } from '../types'
+import { OrderSummary, Product, SellerReport, Store } from '../types'
 
 type ProductPayload = {
   name: string
@@ -28,12 +34,21 @@ type ProductPayload = {
   image: string
 }
 
-export function SellerDashboardPage({ token }: { token: string }) {
+type SellerView = 'overview' | 'store' | 'products' | 'orders'
+
+export function SellerDashboardPage({
+  token,
+  view = 'overview',
+}: {
+  token: string
+  view?: SellerView
+}) {
   const [store, setStore] = useState<Store | null>(null)
   const [storeName, setStoreName] = useState('')
   const [storeDescription, setStoreDescription] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [orders, setOrders] = useState<OrderSummary[]>([])
+  const [report, setReport] = useState<SellerReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingStore, setSavingStore] = useState(false)
   const [error, setError] = useState('')
@@ -43,13 +58,15 @@ export function SellerDashboardPage({ token }: { token: string }) {
     setError('')
 
     try {
-      const [response, orderResponse] = await Promise.all([
+      const [response, orderResponse, reportResponse] = await Promise.all([
         apiFetch<{ store: Store | null; products: Product[] }>('/seller/products', { token }),
         apiFetch<{ orders: OrderSummary[] }>('/seller/orders', { token }),
+        apiFetch<{ report: SellerReport }>('/seller/reports/summary', { token }),
       ])
       setStore(response.store)
       setProducts(response.products)
       setOrders(orderResponse.orders)
+      setReport(reportResponse.report)
       setStoreName(response.store?.storeName ?? '')
       setStoreDescription(response.store?.description ?? '')
     } catch (err) {
@@ -142,33 +159,134 @@ export function SellerDashboardPage({ token }: { token: string }) {
     }
   }
 
+  async function processOrder(order: OrderSummary) {
+    const confirmed = await showConfirm(
+      'Proses pesanan?',
+      `Order dari ${order.buyerName} akan dipindahkan dari Sedang Dikemas ke Menunggu Pengirim.`,
+      'Ya, proses',
+    )
+
+    if (!confirmed) return
+
+    setError('')
+
+    try {
+      await apiFetch(`/seller/orders/${order.id}/process`, { method: 'POST', token })
+      await loadSellerData()
+      await showSuccess(
+        'Pesanan diproses',
+        'Status order sudah masuk Menunggu Pengirim dan history tersimpan di database.',
+      )
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Pesanan gagal diproses.'
+      setError(message)
+      await showError('Proses pesanan gagal', message)
+    }
+  }
+
+  const sellerNavItems = [
+    {
+      to: '/seller',
+      label: 'Overview',
+      icon: <LayoutDashboard size={16} />,
+      meta: String(report?.orderCount ?? 0),
+    },
+    {
+      to: '/seller/store',
+      label: 'Store',
+      icon: <StoreIcon size={16} />,
+    },
+    {
+      to: '/seller/products',
+      label: 'Products',
+      icon: <Package size={16} />,
+      meta: String(products.length),
+    },
+    {
+      to: '/seller/orders',
+      label: 'Orders',
+      icon: <ReceiptText size={16} />,
+      meta: String(report?.pendingOrders ?? 0),
+    },
+  ]
+
   return (
-    <section className="page-shell py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Badge className="border-emerald-100 bg-emerald-50 text-harbor">
-            Level 3 Seller Experience
-          </Badge>
-          <h1 className="mt-3 text-3xl font-bold text-ink">Seller workspace</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Kelola store dan produk, lalu pantau incoming orders dari checkout buyer.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <WorkspacePanel
+      badge="SELLER"
+      title={getSellerTitle(view)}
+      subtitle={getSellerSubtitle(view)}
+      navItems={sellerNavItems}
+      actions={
+        <>
           <Button variant="secondary" onClick={loadSellerData}>
             <RefreshCw size={16} />
             Refresh
           </Button>
-          <Button disabled={!store} onClick={() => submitProduct()}>
-            <Plus size={16} />
-            Product
-          </Button>
-        </div>
-      </div>
+          {view === 'products' && (
+            <Button variant="success" disabled={!store} onClick={() => submitProduct()}>
+              <Plus size={16} />
+              Product
+            </Button>
+          )}
+        </>
+      }
+    >
 
       {error && <p className="mt-6 text-sm font-semibold text-red-600">{error}</p>}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+      {view === 'overview' && (
+        <>
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <ReportMetric
+          icon={<ReceiptText size={20} />}
+          label="Incoming orders"
+          value={String(report?.orderCount ?? 0)}
+        />
+        <ReportMetric
+          icon={<CircleDollarSign size={20} />}
+          label="Seller income"
+          value={formatPrice(report?.totalIncome ?? 0)}
+        />
+        <ReportMetric
+          icon={<BadgePercent size={20} />}
+          label="Total discount"
+          value={formatPrice(report?.totalDiscount ?? 0)}
+        />
+        <ReportMetric
+          icon={<Clock3 size={20} />}
+          label="Need process"
+          value={String(report?.pendingOrders ?? 0)}
+        />
+      </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <SummaryPanel
+              title="Store setup"
+              description="Atur identitas toko dan deskripsi publik."
+              count={store ? 1 : 0}
+              actionLabel="Open store"
+              to="/seller/store"
+            />
+            <SummaryPanel
+              title="Product management"
+              description="Kelola produk, gambar, harga, kategori, dan stock."
+              count={products.length}
+              actionLabel="Open products"
+              to="/seller/products"
+            />
+            <SummaryPanel
+              title="Order processing"
+              description="Proses pesanan buyer dari packing ke menunggu pengirim."
+              count={orders.length}
+              actionLabel="Open orders"
+              to="/seller/orders"
+            />
+          </div>
+        </>
+      )}
+
+      {view === 'store' && (
+        <>
         <Card className="p-5 shadow-soft">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-emerald-50 text-harbor">
@@ -198,7 +316,7 @@ export function SellerDashboardPage({ token }: { token: string }) {
                 className="min-h-28 resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-harbor focus:ring-2 focus:ring-emerald-100"
               />
             </label>
-            <Button disabled={savingStore}>
+            <Button variant={store ? 'warning' : 'success'} disabled={savingStore}>
               {savingStore ? 'Menyimpan...' : store ? 'Update store' : 'Create store'}
             </Button>
           </form>
@@ -214,6 +332,26 @@ export function SellerDashboardPage({ token }: { token: string }) {
           )}
         </Card>
 
+          <Card className="mt-6 p-5 shadow-soft">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex gap-3">
+                <Package className="mt-0.5 text-harbor" size={21} />
+                <div>
+                  <h2 className="font-bold text-ink">Public catalog integration</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Produk seller memakai endpoint publik yang sama dengan guest catalog.
+                  </p>
+                </div>
+              </div>
+              <Link to="/products">
+                <Button variant="info">Open public catalog</Button>
+              </Link>
+            </div>
+          </Card>
+        </>
+      )}
+
+      {view === 'products' && (
         <Card className="overflow-hidden shadow-soft">
           <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -267,12 +405,12 @@ export function SellerDashboardPage({ token }: { token: string }) {
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-2">
                           <Link to={`/products/${product.id}`}>
-                            <Button variant="ghost">
+                            <Button variant="info">
                               <Eye size={15} />
                               View
                             </Button>
                           </Link>
-                          <Button variant="secondary" onClick={() => submitProduct(product)}>
+                          <Button variant="warning" onClick={() => submitProduct(product)}>
                             <Pencil size={15} />
                             Edit
                           </Button>
@@ -296,49 +434,37 @@ export function SellerDashboardPage({ token }: { token: string }) {
             </div>
           )}
         </Card>
-      </div>
+      )}
 
-      <Card className="mt-6 p-5 shadow-soft">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-3">
-            <Package className="mt-0.5 text-harbor" size={21} />
-            <div>
-              <h2 className="font-bold text-ink">Public catalog integration</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Semua produk seller yang tersimpan lewat dashboard ini memakai endpoint publik
-                yang sama dengan guest catalog.
-              </p>
-            </div>
-          </div>
-          <Link to="/products">
-            <Button variant="secondary">Open public catalog</Button>
-          </Link>
-        </div>
-      </Card>
-
-      <Card className="mt-6 overflow-hidden shadow-soft">
+      {view === 'orders' && (
+      <Card className="overflow-hidden shadow-soft">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
             <ReceiptText className="mt-0.5 text-harbor" size={21} />
             <div>
               <h2 className="font-bold text-ink">Incoming orders</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Read-only pada Level 3. Seller processing akan masuk level berikutnya.
+                Seller memproses order dari Sedang Dikemas menjadi Menunggu Pengirim.
               </p>
             </div>
           </div>
-          <Badge>{orders.length} orders</Badge>
+          <div className="flex flex-wrap gap-2">
+            <Badge>{orders.length} orders</Badge>
+            <Badge>{report?.processedOrders ?? 0} processed</Badge>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-5 py-3">Buyer</th>
                 <th className="px-5 py-3">Delivery</th>
                 <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Discount</th>
                 <th className="px-5 py-3">Total</th>
                 <th className="px-5 py-3">Created</th>
+                <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -349,17 +475,38 @@ export function SellerDashboardPage({ token }: { token: string }) {
                   <td className="px-5 py-3">
                     <Badge>{order.status}</Badge>
                   </td>
+                  <td className="px-5 py-3 text-slate-700">
+                    {order.discountAmount > 0 ? (
+                      <span className="font-semibold text-coral">
+                        -{formatPrice(order.discountAmount)}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
                   <td className="px-5 py-3 font-bold text-harbor">
                     {formatPrice(order.finalTotal)}
                   </td>
                   <td className="px-5 py-3 text-slate-600">
                     {new Date(order.createdAt).toLocaleString('id-ID')}
                   </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end">
+                      <Button
+                        variant={order.status === 'Sedang Dikemas' ? 'success' : 'ghost'}
+                        disabled={order.status !== 'Sedang Dikemas'}
+                        onClick={() => processOrder(order)}
+                      >
+                        <CheckCircle2 size={15} />
+                        Process
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {orders.length === 0 && (
                 <tr>
-                  <td className="px-5 py-8 text-center text-slate-600" colSpan={5}>
+                  <td className="px-5 py-8 text-center text-slate-600" colSpan={7}>
                     Belum ada pesanan masuk.
                   </td>
                 </tr>
@@ -368,8 +515,79 @@ export function SellerDashboardPage({ token }: { token: string }) {
           </table>
         </div>
       </Card>
-    </section>
+      )}
+    </WorkspacePanel>
   )
+}
+
+function ReportMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <Card className="p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-md bg-emerald-50 text-harbor">
+          {icon}
+        </span>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
+          <p className="mt-1 text-lg font-bold text-ink">{value}</p>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function SummaryPanel({
+  title,
+  description,
+  count,
+  actionLabel,
+  to,
+}: {
+  title: string
+  description: string
+  count: number
+  actionLabel: string
+  to: string
+}) {
+  return (
+    <Card className="p-5 shadow-soft">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            {count} records
+          </p>
+          <h2 className="mt-2 text-lg font-bold text-ink">{title}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+        </div>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-emerald-50 text-harbor">
+          <LayoutDashboard size={20} />
+        </span>
+      </div>
+      <Link to={to} className="mt-5 block">
+        <Button className="w-full">{actionLabel}</Button>
+      </Link>
+    </Card>
+  )
+}
+
+function getSellerTitle(view: SellerView) {
+  if (view === 'store') return 'Store management'
+  if (view === 'products') return 'Product management'
+  if (view === 'orders') return 'Order processing'
+  return 'Seller overview'
+}
+
+function getSellerSubtitle(view: SellerView) {
+  if (view === 'store') {
+    return 'Halaman khusus identitas toko, nama toko, dan deskripsi publik.'
+  }
+  if (view === 'products') {
+    return 'Halaman khusus CRUD produk seller dengan action modal dan gambar produk.'
+  }
+  if (view === 'orders') {
+    return 'Halaman khusus incoming order dan proses status pesanan seller.'
+  }
+  return 'Ringkasan performa seller, income, diskon, dan shortcut ke modul operasional.'
 }
 
 async function openProductModal(product?: Product) {
