@@ -260,9 +260,10 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
 
           <SimpleTable
             title="Users"
-            headers={['Username', 'Display name', 'Roles', 'Created']}
+            headers={['Username', 'Email', 'Display name', 'Roles', 'Created']}
             rows={monitoring.users.map((item) => [
               item.username,
+              item.email,
               item.displayName,
               item.roles.join(', '),
               formatDate(item.createdAt),
@@ -827,7 +828,7 @@ function setSimulatedDate(
 function showDiscountDetail(item: DiscountResource, kind: 'voucher' | 'promo') {
   return Swal.fire({
     icon: 'info',
-    title: item.code,
+    titleText: item.code,
     confirmButtonColor: '#0f766e',
     html: `
       <div class="grid gap-2 text-left text-sm">

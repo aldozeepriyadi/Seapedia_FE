@@ -13,6 +13,7 @@ import { AuthResponse, Role, User } from '../types'
 
 type RegisterPayload = {
   username: string
+  email: string
   displayName: string
   password: string
   roles: Role[]

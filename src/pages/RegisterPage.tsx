@@ -19,6 +19,7 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [roles, setRoles] = useState<Role[]>(['BUYER'])
   const [error, setError] = useState('')
@@ -41,7 +42,7 @@ export function RegisterPage() {
     setError('')
 
     try {
-      const response = await register({ displayName, username, password, roles })
+      const response = await register({ displayName, username, email, password, roles })
       await showSuccess('Register berhasil', 'Akun baru sudah tersimpan di database.')
       navigate(response.requiresRoleSelection ? '/choose-role' : '/dashboard')
     } catch (err) {
@@ -75,6 +76,15 @@ export function RegisterPage() {
               <Input value={username} onChange={(event) => setUsername(event.target.value)} />
             </label>
           </div>
+          <label className="grid gap-2 text-sm font-semibold text-slate-700">
+            Email
+            <Input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="nama@email.com"
+            />
+          </label>
           <label className="grid gap-2 text-sm font-semibold text-slate-700">
             Password
             <Input

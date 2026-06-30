@@ -3,6 +3,7 @@ export type Role = 'ADMIN' | 'BUYER' | 'SELLER' | 'DRIVER'
 export type User = {
   id: string
   username: string
+  email: string
   displayName: string
   roles: Role[]
   activeRole: Role | null
@@ -192,6 +193,7 @@ export type AdminMonitoringSnapshot = {
   users: {
     id: string
     username: string
+    email: string
     displayName: string
     roles: Role[]
     createdAt: string
