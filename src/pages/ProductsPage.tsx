@@ -1,5 +1,6 @@
 import { ArrowUpDown, Filter, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ProductCard } from '../components/ProductCard'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -11,12 +12,15 @@ type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc' | 'stock
 type StockFilter = 'all' | 'available' | 'empty'
 
 export function ProductsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
-  const [query, setQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-  const [storeFilter, setStoreFilter] = useState('all')
-  const [stockFilter, setStockFilter] = useState<StockFilter>('all')
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc')
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '')
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') ?? 'all')
+  const [storeFilter, setStoreFilter] = useState(() => searchParams.get('store') ?? 'all')
+  const [stockFilter, setStockFilter] = useState<StockFilter>(() =>
+    parseStockFilter(searchParams.get('stock')),
+  )
+  const [sortBy, setSortBy] = useState<SortOption>(() => parseSortOption(searchParams.get('sort')))
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -24,6 +28,14 @@ export function ProductsPage() {
       .then((response) => setProducts(response.products))
       .catch((err) => setError(err instanceof Error ? err.message : 'Gagal memuat produk.'))
   }, [])
+
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '')
+    setCategoryFilter(searchParams.get('category') ?? 'all')
+    setStoreFilter(searchParams.get('store') ?? 'all')
+    setStockFilter(parseStockFilter(searchParams.get('stock')))
+    setSortBy(parseSortOption(searchParams.get('sort')))
+  }, [searchParams])
 
   const categories = useMemo(
     () => uniqueValues(products.map((product) => product.category || 'General')),
@@ -72,6 +84,7 @@ export function ProductsPage() {
     setStoreFilter('all')
     setStockFilter('all')
     setSortBy('name-asc')
+    setSearchParams({})
   }
 
   return (
@@ -227,4 +240,20 @@ function sortProducts(firstProduct: Product, secondProduct: Product, sortBy: Sor
     default:
       return firstProduct.name.localeCompare(secondProduct.name)
   }
+}
+
+function parseStockFilter(value: string | null): StockFilter {
+  return value === 'available' || value === 'empty' ? value : 'all'
+}
+
+function parseSortOption(value: string | null): SortOption {
+  const allowedOptions: SortOption[] = [
+    'name-asc',
+    'name-desc',
+    'price-asc',
+    'price-desc',
+    'stock-desc',
+  ]
+
+  return allowedOptions.includes(value as SortOption) ? (value as SortOption) : 'name-asc'
 }

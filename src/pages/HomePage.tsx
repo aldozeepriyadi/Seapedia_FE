@@ -1,12 +1,13 @@
-import { ArrowRight, Search, ShieldCheck, Store, Truck, UserRound } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { ArrowRight, Search, ShieldCheck, Store, Truck, UserRound, X } from 'lucide-react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { ProductCard } from '../components/ProductCard'
 import { ReviewForm } from '../components/ReviewForm'
 import { ReviewList } from '../components/ReviewList'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { Input } from '../components/ui/Input'
 import { apiFetch } from '../lib/api'
 import { AppReview, Product } from '../types'
 
@@ -36,8 +37,10 @@ const roleHighlights = [
 const categoryChips = ['Fashion', 'Bags', 'Electronics', 'Home Office']
 
 export function HomePage() {
+  const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [reviews, setReviews] = useState<AppReview[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     apiFetch<{ products: Product[] }>('/products')
@@ -48,6 +51,25 @@ export function HomePage() {
       .then((response) => setReviews(response.reviews))
       .catch(() => setReviews([]))
   }, [])
+
+  const popularSearches = useMemo(() => {
+    const values = products.flatMap((product) => [product.name, product.category]).filter(Boolean)
+
+    return Array.from(new Set(values)).slice(0, 5)
+  }, [products])
+
+  function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const keyword = searchQuery.trim()
+    const params = new URLSearchParams()
+
+    if (keyword) {
+      params.set('q', keyword)
+    }
+
+    navigate(`/products${params.toString() ? `?${params.toString()}` : ''}`)
+  }
 
   return (
     <div>
@@ -69,23 +91,56 @@ export function HomePage() {
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-100 sm:text-lg">
               Etalase produk multi-seller dengan akun, active role, dan review aplikasi publik.
             </p>
-            <div className="mt-8 flex max-w-xl flex-col gap-3 rounded-md bg-white p-2 shadow-soft sm:flex-row">
-              <div className="flex h-11 flex-1 items-center gap-2 px-3 text-slate-500">
-                <Search size={18} />
-                <span className="text-sm font-semibold">Cari produk, toko, atau kategori</span>
-              </div>
-              <Link to="/products">
-                <Button className="w-full sm:w-auto">
-                  Browse products
+            <form
+              className="mt-8 max-w-2xl rounded-md bg-white p-2 shadow-soft"
+              onSubmit={handleSearchSubmit}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <label className="relative flex-1">
+                  <span className="sr-only">Cari produk, toko, atau kategori</span>
+                  <Search
+                    size={18}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <Input
+                    className="h-11 border-0 pl-10 pr-10 text-sm font-semibold shadow-none focus:ring-0"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Cari produk, toko, atau kategori"
+                  />
+                  {searchQuery && (
+                    <button
+                      aria-label="Kosongkan pencarian"
+                      className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-ink"
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                </label>
+                <Button className="h-11 px-5" type="submit">
+                  Cari
                   <ArrowRight size={16} />
                 </Button>
-              </Link>
-            </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 px-1 pb-1">
+                {popularSearches.map((item) => (
+                  <Link
+                    key={item}
+                    to={`/products?q=${encodeURIComponent(item)}`}
+                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 transition hover:bg-emerald-50 hover:text-harbor"
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </div>
+            </form>
             <div className="mt-5 flex flex-wrap gap-2">
               {categoryChips.map((item) => (
                 <Link
                   key={item}
-                  to="/products"
+                  to={`/products?category=${encodeURIComponent(item)}`}
                   className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur transition hover:bg-white/20"
                 >
                   {item}
