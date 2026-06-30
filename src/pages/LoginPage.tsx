@@ -60,24 +60,7 @@ export function LoginPage() {
           {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
           <Button disabled={submitting}>{submitting ? 'Masuk...' : 'Login'}</Button>
         </form>
-        <div className="mt-5 grid gap-1 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
-          <p>
-            Admin: <span className="font-semibold text-ink">admin</span> /{' '}
-            <span className="font-semibold text-ink">Admin123!</span>
-          </p>
-          <p>
-            Buyer: <span className="font-semibold text-ink">buyerdemo</span> /{' '}
-            <span className="font-semibold text-ink">Buyer123!</span>
-          </p>
-          <p>
-            Seller: <span className="font-semibold text-ink">sellerdemo</span> /{' '}
-            <span className="font-semibold text-ink">Seller123!</span>
-          </p>
-          <p>
-            Driver: <span className="font-semibold text-ink">driverdemo</span> /{' '}
-            <span className="font-semibold text-ink">Driver123!</span>
-          </p>
-        </div>
+        
         <p className="mt-5 text-sm text-slate-600">
           Belum punya akun?{' '}
           <Link className="font-bold text-harbor" to="/register">
