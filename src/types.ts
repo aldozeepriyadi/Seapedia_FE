@@ -150,7 +150,7 @@ export type DeliveryJob = {
   id: string
   orderId: string
   orderStatus: string
-  jobStatus: 'AVAILABLE' | 'TAKEN' | 'COMPLETED'
+  jobStatus: 'AVAILABLE' | 'TAKEN' | 'COMPLETED' | 'RETURNED'
   driverId: string | null
   buyerName: string
   sellerId: string
@@ -174,6 +174,82 @@ export type DriverReport = {
   completedJobs: number
   totalEarnings: number
   earningRule: string
+}
+
+export type AdminMonitoringSnapshot = {
+  summary: {
+    users: number
+    stores: number
+    products: number
+    orders: number
+    vouchers: number
+    promos: number
+    deliveryJobs: number
+    overdueOrders: number
+  }
+  slaRules: Record<DeliveryMethod, number>
+  now: string
+  users: {
+    id: string
+    username: string
+    displayName: string
+    roles: Role[]
+    createdAt: string
+  }[]
+  stores: {
+    id: string
+    storeName: string
+    sellerName: string
+    productCount: number
+    createdAt: string
+  }[]
+  products: {
+    id: string
+    name: string
+    storeName: string
+    category: string
+    price: number
+    stock: number
+    createdAt: string
+  }[]
+  recentOrders: {
+    id: string
+    buyerName: string
+    storeName: string
+    deliveryMethod: DeliveryMethod
+    finalTotal: number
+    status: string
+    createdAt: string
+  }[]
+  deliveryJobs: {
+    id: string
+    orderId: string
+    storeName: string
+    driverName: string | null
+    jobStatus: string
+    orderStatus: string
+    earningAmount: number
+    createdAt: string
+    takenAt: string | null
+    completedAt: string | null
+  }[]
+  overdueOrders: {
+    id: string
+    buyerId: string
+    buyerName: string
+    storeName: string
+    deliveryMethod: DeliveryMethod
+    finalTotal: number
+    status: string
+    createdAt: string
+    deadlineAt: string
+  }[]
+}
+
+export type OverdueRunResult = {
+  simulatedNow: string
+  processedCount: number
+  processedOrders: AdminMonitoringSnapshot['overdueOrders']
 }
 
 export type Store = {

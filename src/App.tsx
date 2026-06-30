@@ -36,6 +36,8 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="admin" element={<AdminRoutePage view="overview" />} />
+          <Route path="admin/monitoring" element={<AdminRoutePage view="monitoring" />} />
+          <Route path="admin/overdue" element={<AdminRoutePage view="overdue" />} />
           <Route path="admin/vouchers" element={<AdminRoutePage view="vouchers" />} />
           <Route path="admin/promos" element={<AdminRoutePage view="promos" />} />
           <Route path="seller" element={<SellerRoutePage view="overview" />} />
@@ -59,7 +61,7 @@ function App() {
   )
 }
 
-function AdminRoutePage({ view }: { view: 'overview' | 'vouchers' | 'promos' }) {
+function AdminRoutePage({ view }: { view: 'overview' | 'monitoring' | 'overdue' | 'vouchers' | 'promos' }) {
   const { token, user } = useAuth()
 
   if (!token || user?.activeRole !== 'ADMIN') {

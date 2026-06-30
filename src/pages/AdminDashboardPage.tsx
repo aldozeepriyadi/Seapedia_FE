@@ -1,15 +1,22 @@
-import { useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   ArrowDownUp,
+  AlertTriangle,
   BadgePercent,
+  CalendarClock,
   ChevronLeft,
   ChevronRight,
   Eye,
   LayoutDashboard,
+  Package,
   RefreshCw,
+  RotateCcw,
   Search,
   ShieldCheck,
+  Store,
   TicketPercent,
+  Truck,
+  Users,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge'
@@ -20,7 +27,7 @@ import { WorkspacePanel } from '../components/WorkspacePanel'
 import { apiFetch } from '../lib/api'
 import { showError, showSuccess, Swal } from '../lib/alerts'
 import { formatPrice } from '../lib/format'
-import { DiscountResource } from '../types'
+import { AdminMonitoringSnapshot, DiscountResource, OverdueRunResult } from '../types'
 
 type DiscountPayload = {
   code: string
@@ -29,25 +36,34 @@ type DiscountPayload = {
   remainingUsage?: number
 }
 
-type AdminView = 'overview' | 'vouchers' | 'promos'
+type AdminView = 'overview' | 'monitoring' | 'overdue' | 'vouchers' | 'promos'
 
 export function AdminDashboardPage({ token, view = 'overview' }: { token: string; view?: AdminView }) {
   const [vouchers, setVouchers] = useState<DiscountResource[]>([])
   const [promos, setPromos] = useState<DiscountResource[]>([])
+  const [monitoring, setMonitoring] = useState<AdminMonitoringSnapshot | null>(null)
+  const [simulatedNow, setSimulatedNow] = useState(() => toDatetimeLocal(addDays(new Date(), 1)))
+  const [lastOverdueRun, setLastOverdueRun] = useState<OverdueRunResult | null>(null)
   const [loading, setLoading] = useState(true)
+  const [runningOverdue, setRunningOverdue] = useState(false)
   const [error, setError] = useState('')
 
-  async function loadDiscounts() {
+  async function loadAdminData(nextSimulatedNow = simulatedNow) {
     setLoading(true)
     setError('')
 
     try {
-      const [voucherResponse, promoResponse] = await Promise.all([
+      const [voucherResponse, promoResponse, monitoringResponse] = await Promise.all([
         apiFetch<{ vouchers: DiscountResource[] }>('/admin/vouchers', { token }),
         apiFetch<{ promos: DiscountResource[] }>('/admin/promos', { token }),
+        apiFetch<AdminMonitoringSnapshot>(
+          `/admin/monitoring?simulatedNow=${encodeURIComponent(new Date(nextSimulatedNow).toISOString())}`,
+          { token },
+        ),
       ])
       setVouchers(voucherResponse.vouchers)
       setPromos(promoResponse.promos)
+      setMonitoring(monitoringResponse)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memuat data admin.')
     } finally {
@@ -56,7 +72,7 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
   }
 
   useEffect(() => {
-    loadDiscounts()
+    loadAdminData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
@@ -73,7 +89,7 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
         token,
         body: JSON.stringify(payload),
       })
-      await loadDiscounts()
+      await loadAdminData()
       await showSuccess(
         type === 'voucher' ? 'Voucher dibuat' : 'Promo dibuat',
         'Kode diskon sudah tersimpan di database dan bisa dipakai saat checkout.',
@@ -85,12 +101,62 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
     }
   }
 
+  async function runOverdue() {
+    const confirmed = await Swal.fire({
+      icon: 'warning',
+      title: 'Jalankan overdue handling?',
+      text: 'Order yang melewati SLA akan direfund, stock dikembalikan, dan status menjadi Dikembalikan.',
+      showCancelButton: true,
+      confirmButtonColor: '#0f766e',
+      cancelButtonColor: '#78716c',
+      confirmButtonText: 'Ya, proses',
+      cancelButtonText: 'Batal',
+    })
+
+    if (!confirmed.isConfirmed) return
+
+    setRunningOverdue(true)
+    setError('')
+
+    try {
+      const result = await apiFetch<OverdueRunResult>('/admin/overdue/run', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ simulatedNow: new Date(simulatedNow).toISOString() }),
+      })
+      setLastOverdueRun(result)
+      await loadAdminData()
+      await showSuccess(
+        'Overdue handling selesai',
+        `${result.processedCount} order diproses menjadi Dikembalikan.`,
+      )
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Overdue handling gagal.'
+      setError(message)
+      await showError('Overdue gagal', message)
+    } finally {
+      setRunningOverdue(false)
+    }
+  }
+
   const adminNavItems = [
     {
       to: '/admin',
       label: 'Overview',
       icon: <LayoutDashboard size={16} />,
-      meta: String(vouchers.length + promos.length),
+      meta: String(monitoring?.summary.orders ?? 0),
+    },
+    {
+      to: '/admin/monitoring',
+      label: 'Monitoring',
+      icon: <ShieldCheck size={16} />,
+      meta: String(monitoring?.summary.deliveryJobs ?? 0),
+    },
+    {
+      to: '/admin/overdue',
+      label: 'Overdue',
+      icon: <AlertTriangle size={16} />,
+      meta: String(monitoring?.summary.overdueOrders ?? 0),
     },
     {
       to: '/admin/vouchers',
@@ -114,19 +180,20 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
       navItems={adminNavItems}
       actions={
         <>
-          {view !== 'promos' && (
+          {view !== 'promos' && view !== 'monitoring' && view !== 'overdue' && (
             <Button variant="success" onClick={() => createDiscount('voucher')}>
               <TicketPercent size={16} />
               Voucher
             </Button>
           )}
-          {view !== 'vouchers' && (
+          {view !== 'vouchers' && view !== 'monitoring' && view !== 'overdue' && (
             <Button variant="success" onClick={() => createDiscount('promo')}>
               <BadgePercent size={16} />
               Promo
             </Button>
           )}
-          <Button variant="secondary" onClick={loadDiscounts}>
+         
+          <Button variant="secondary" onClick={() => loadAdminData()}>
             <RefreshCw size={16} />
             Refresh
           </Button>
@@ -138,22 +205,32 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
 
       {view === 'overview' && (
         <>
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={<TicketPercent size={20} />} label="Voucher" value={String(vouchers.length)} />
-        <Metric icon={<BadgePercent size={20} />} label="Promo" value={String(promos.length)} />
-        <Metric
-          icon={<ShieldCheck size={20} />}
-          label="Voucher usage"
-          value={String(vouchers.reduce((total, item) => total + (item.remainingUsage ?? 0), 0))}
-        />
-        <Metric
-          icon={<RefreshCw size={20} />}
-          label="Active records"
-          value={String(vouchers.length + promos.length)}
-        />
-      </div>
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric icon={<Users size={20} />} label="Users" value={String(monitoring?.summary.users ?? 0)} />
+            <Metric icon={<Store size={20} />} label="Stores" value={String(monitoring?.summary.stores ?? 0)} />
+            <Metric icon={<Package size={20} />} label="Products" value={String(monitoring?.summary.products ?? 0)} />
+            <Metric icon={<Truck size={20} />} label="Delivery jobs" value={String(monitoring?.summary.deliveryJobs ?? 0)} />
+            <Metric icon={<TicketPercent size={20} />} label="Vouchers" value={String(vouchers.length)} />
+            <Metric icon={<BadgePercent size={20} />} label="Promos" value={String(promos.length)} />
+            <Metric icon={<ShieldCheck size={20} />} label="Orders" value={String(monitoring?.summary.orders ?? 0)} />
+            <Metric icon={<AlertTriangle size={20} />} label="Overdue" value={String(monitoring?.summary.overdueOrders ?? 0)} />
+          </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <SummaryPanel
+              title="Marketplace monitoring"
+              description="Pantau users, stores, products, orders, delivery jobs, dan overdue."
+              count={monitoring?.summary.orders ?? 0}
+              actionLabel="Open monitoring"
+              to="/admin/monitoring"
+            />
+            <SummaryPanel
+              title="Overdue handling"
+              description="Simulasikan waktu maju dan proses refund/return order yang melewati SLA."
+              count={monitoring?.summary.overdueOrders ?? 0}
+              actionLabel="Open overdue"
+              to="/admin/overdue"
+            />
             <SummaryPanel
               title="Voucher management"
               description="Kelola voucher dengan expiry date dan sisa penggunaan."
@@ -170,6 +247,146 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
             />
           </div>
         </>
+      )}
+
+      {view === 'monitoring' && monitoring && (
+        <div className="grid gap-6">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric icon={<Users size={20} />} label="Users" value={String(monitoring.summary.users)} />
+            <Metric icon={<Store size={20} />} label="Stores" value={String(monitoring.summary.stores)} />
+            <Metric icon={<Package size={20} />} label="Products" value={String(monitoring.summary.products)} />
+            <Metric icon={<Truck size={20} />} label="Delivery jobs" value={String(monitoring.summary.deliveryJobs)} />
+          </div>
+
+          <SimpleTable
+            title="Users"
+            headers={['Username', 'Display name', 'Roles', 'Created']}
+            rows={monitoring.users.map((item) => [
+              item.username,
+              item.displayName,
+              item.roles.join(', '),
+              formatDate(item.createdAt),
+            ])}
+          />
+          <SimpleTable
+            title="Stores"
+            headers={['Store', 'Seller', 'Products', 'Created']}
+            rows={monitoring.stores.map((item) => [
+              item.storeName,
+              item.sellerName,
+              String(item.productCount),
+              formatDate(item.createdAt),
+            ])}
+          />
+          <SimpleTable
+            title="Products"
+            headers={['Product', 'Store', 'Category', 'Price', 'Stock']}
+            rows={monitoring.products.map((item) => [
+              item.name,
+              item.storeName,
+              item.category,
+              formatPrice(item.price),
+              String(item.stock),
+            ])}
+          />
+          <SimpleTable
+            title="Recent orders"
+            headers={['Order', 'Buyer', 'Store', 'Delivery', 'Total', 'Status']}
+            rows={monitoring.recentOrders.map((item) => [
+              shortId(item.id),
+              item.buyerName,
+              item.storeName,
+              item.deliveryMethod,
+              formatPrice(item.finalTotal),
+              item.status,
+            ])}
+          />
+          <SimpleTable
+            title="Delivery jobs"
+            headers={['Job', 'Order', 'Store', 'Driver', 'Job status', 'Order status', 'Earning']}
+            rows={monitoring.deliveryJobs.map((item) => [
+              shortId(item.id),
+              shortId(item.orderId),
+              item.storeName,
+              item.driverName ?? '-',
+              item.jobStatus,
+              item.orderStatus,
+              formatPrice(item.earningAmount),
+            ])}
+          />
+        </div>
+      )}
+
+      {view === 'overdue' && monitoring && (
+        <div className="grid gap-6">
+          <Card className="p-5 shadow-soft">
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <h2 className="text-lg font-bold text-ink">Time simulation</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  SLA: Instant {monitoring.slaRules.Instant} jam, Next Day {monitoring.slaRules['Next Day']} jam, Regular {monitoring.slaRules.Regular} jam.
+                </p>
+                <label className="mt-4 grid gap-2 text-sm font-semibold text-slate-700">
+                  Simulated time
+                  <Input
+                    type="datetime-local"
+                    value={simulatedNow}
+                    onChange={(event) => setSimulatedNow(event.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-4 lg:grid-cols-1">
+                <Button variant="secondary" onClick={() => loadAdminData(simulatedNow)}>
+                  <RefreshCw size={15} />
+                  Apply
+                </Button>
+                <Button variant="secondary" onClick={() => setSimulatedDate(addDays(new Date(), 1), setSimulatedNow, loadAdminData)}>
+                  <CalendarClock size={15} />
+                  +1 day
+                </Button>
+                <Button variant="secondary" onClick={() => setSimulatedDate(addDays(new Date(), 3), setSimulatedNow, loadAdminData)}>
+                  <CalendarClock size={15} />
+                  +3 days
+                </Button>
+                <Button variant="danger" disabled={runningOverdue} onClick={runOverdue}>
+                  <RotateCcw size={15} />
+                  {runningOverdue ? 'Processing...' : 'Run overdue'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <SimpleTable
+            title={`Overdue candidates (${monitoring.overdueOrders.length})`}
+            headers={['Order', 'Buyer', 'Store', 'Delivery', 'Deadline', 'Refund', 'Status']}
+            rows={monitoring.overdueOrders.map((item) => [
+              shortId(item.id),
+              item.buyerName,
+              item.storeName,
+              item.deliveryMethod,
+              new Date(item.deadlineAt).toLocaleString('id-ID'),
+              formatPrice(item.finalTotal),
+              item.status,
+            ])}
+            emptyText="Tidak ada order yang melewati SLA pada waktu simulasi ini."
+          />
+
+          {lastOverdueRun && (
+            <SimpleTable
+              title={`Last processed refunds (${lastOverdueRun.processedCount})`}
+              headers={['Order', 'Buyer', 'Store', 'Delivery', 'Refund', 'Final status']}
+              rows={lastOverdueRun.processedOrders.map((item) => [
+                shortId(item.id),
+                item.buyerName,
+                item.storeName,
+                item.deliveryMethod,
+                formatPrice(item.finalTotal),
+                item.status,
+              ])}
+              emptyText="Run terakhir tidak memproses order."
+            />
+          )}
+        </div>
       )}
 
       {view === 'vouchers' && (
@@ -196,6 +413,57 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
         />
       )}
     </WorkspacePanel>
+  )
+}
+
+function SimpleTable({
+  title,
+  headers,
+  rows,
+  emptyText = 'Data tidak ditemukan.',
+}: {
+  title: string
+  headers: string[]
+  rows: ReactNode[][]
+  emptyText?: string
+}) {
+  return (
+    <Card className="overflow-hidden shadow-soft">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <h2 className="text-lg font-bold text-ink">{title}</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[840px] text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              {headers.map((header) => (
+                <th key={header} className="px-5 py-3 font-bold">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex} className="bg-white">
+                {row.map((cell, cellIndex) => (
+                  <td key={`${rowIndex}-${cellIndex}`} className="px-5 py-3 text-slate-700 first:font-bold first:text-ink">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td className="px-5 py-8 text-center text-slate-600" colSpan={headers.length}>
+                  {emptyText}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   )
 }
 
@@ -501,19 +769,27 @@ function Metric({ icon, label, value }: { icon: JSX.Element; label: string; valu
 }
 
 function getAdminTitle(view: AdminView) {
+  if (view === 'monitoring') return 'Marketplace monitoring'
+  if (view === 'overdue') return 'Overdue handling'
   if (view === 'vouchers') return 'Voucher management'
   if (view === 'promos') return 'Promo management'
   return 'Admin overview'
 }
 
 function getAdminSubtitle(view: AdminView) {
+  if (view === 'monitoring') {
+    return 'Pantau users, stores, products, orders, voucher/promo, delivery jobs, dan overdue dalam satu admin workspace.'
+  }
+  if (view === 'overdue') {
+    return 'Simulasikan waktu maju, cek order melewati SLA, lalu proses refund dan return secara otomatis.'
+  }
   if (view === 'vouchers') {
     return 'Halaman khusus voucher dengan datatable, search, sort, pagination, dan detail data.'
   }
   if (view === 'promos') {
     return 'Halaman khusus promo dengan datatable, search, sort, pagination, dan detail data.'
   }
-  return 'Ringkasan operasional admin discount console untuk voucher dan promo checkout.'
+  return 'Ringkasan operasional admin marketplace untuk monitoring dan discount console.'
 }
 
 function getSortValue(item: DiscountResource, sortKey: SortKey) {
@@ -526,6 +802,26 @@ function getSortValue(item: DiscountResource, sortKey: SortKey) {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('id-ID')
+}
+
+function shortId(value: string) {
+  return value.slice(0, 8).toUpperCase()
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date)
+  nextDate.setDate(nextDate.getDate() + days)
+  return nextDate
+}
+
+function setSimulatedDate(
+  date: Date,
+  setSimulatedNow: (value: string) => void,
+  loadAdminData: (value: string) => Promise<void>,
+) {
+  const nextValue = toDatetimeLocal(date)
+  setSimulatedNow(nextValue)
+  void loadAdminData(nextValue)
 }
 
 function showDiscountDetail(item: DiscountResource, kind: 'voucher' | 'promo') {
