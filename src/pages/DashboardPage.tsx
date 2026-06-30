@@ -15,28 +15,28 @@ const roleConfig: Record<
     icon: UserRound,
     title: 'Buyer session',
     summary:
-      'Buyer dapat mengelola wallet, keranjang, checkout voucher/promo, dan spending report pada Level 4.',
+      'Buyer dapat mengelola wallet, keranjang, checkout voucher/promo, spending report, dan tracking delivery pada Level 5.',
     nextLevel: ['Wallet', 'Cart', 'Checkout', 'Spending report'],
   },
   SELLER: {
     icon: Store,
     title: 'Seller session',
     summary:
-      'Seller dapat membuat store, mengelola produk, memproses order, dan melihat income report pada Level 4.',
+      'Seller dapat membuat store, mengelola produk, memproses order, dan melacak delivery pada Level 5.',
     nextLevel: ['Store management', 'Product CRUD', 'Order processing', 'Income report'],
   },
   DRIVER: {
     icon: Truck,
     title: 'Driver session',
     summary:
-      'Driver sudah tersedia sebagai konteks sesi agar role marketplace lengkap sejak awal.',
-    nextLevel: ['Active role selected', 'Driver context visible', 'Private actions hidden'],
+      'Driver dapat mencari job, mengambil pengiriman, menyelesaikan delivery, dan melihat earnings pada Level 5.',
+    nextLevel: ['Available jobs', 'Active delivery', 'Job history', 'Earnings'],
   },
   ADMIN: {
     icon: ShieldCheck,
     title: 'Admin session',
     summary:
-      'Admin dapat generate voucher dan promo untuk checkout buyer pada Level 4.',
+      'Admin dapat generate voucher dan promo untuk checkout buyer pada Level 5.',
     nextLevel: ['Voucher management', 'Promo management', 'Discount validation'],
   },
 }
@@ -58,6 +58,10 @@ export function DashboardPage() {
     return <Navigate to="/admin" replace />
   }
 
+  if (user.activeRole === 'DRIVER' && token) {
+    return <Navigate to="/driver" replace />
+  }
+
   const config = roleConfig[user.activeRole]
   const Icon = config.icon
 
@@ -73,7 +77,7 @@ export function DashboardPage() {
             />
             <div className="relative flex h-full min-h-[320px] flex-col justify-between">
               <Badge className="w-fit border-white/20 bg-white/15 text-white">
-                Level 4 active role
+                Level 5 active role
               </Badge>
               <div>
                 <Icon size={34} />
@@ -114,7 +118,7 @@ export function DashboardPage() {
           <Card className="p-5">
             <div className="flex items-center gap-3">
               <ClipboardCheck className="text-harbor" size={22} />
-              <h2 className="text-lg font-bold text-ink">Level 4 boundary</h2>
+              <h2 className="text-lg font-bold text-ink">Level 5 boundary</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Dashboard ini sengaja hanya menjadi entry point role. Area privat sudah

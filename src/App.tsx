@@ -7,6 +7,7 @@ import { ChooseRolePage } from './pages/ChooseRolePage'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { DriverDashboardPage } from './pages/DriverDashboardPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -41,6 +42,10 @@ function App() {
           <Route path="seller/store" element={<SellerRoutePage view="store" />} />
           <Route path="seller/products" element={<SellerRoutePage view="products" />} />
           <Route path="seller/orders" element={<SellerRoutePage view="orders" />} />
+          <Route path="driver" element={<DriverRoutePage view="overview" />} />
+          <Route path="driver/available" element={<DriverRoutePage view="available" />} />
+          <Route path="driver/active" element={<DriverRoutePage view="active" />} />
+          <Route path="driver/history" element={<DriverRoutePage view="history" />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="keranjang" element={<CartPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
@@ -72,6 +77,16 @@ function SellerRoutePage({ view }: { view: 'overview' | 'store' | 'products' | '
   }
 
   return <SellerDashboardPage token={token} view={view} />
+}
+
+function DriverRoutePage({ view }: { view: 'overview' | 'available' | 'active' | 'history' }) {
+  const { token, user } = useAuth()
+
+  if (!token || user?.activeRole !== 'DRIVER') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <DriverDashboardPage token={token} view={view} />
 }
 
 export default App

@@ -146,6 +146,36 @@ export type DiscountResource = {
   createdAt: string
 }
 
+export type DeliveryJob = {
+  id: string
+  orderId: string
+  orderStatus: string
+  jobStatus: 'AVAILABLE' | 'TAKEN' | 'COMPLETED'
+  driverId: string | null
+  buyerName: string
+  sellerId: string
+  storeName: string
+  deliveryMethod: DeliveryMethod
+  deliveryFee: number
+  earningAmount: number
+  recipientName: string
+  phone: string
+  addressLine: string
+  city: string
+  postalCode: string
+  createdAt: string
+  takenAt: string | null
+  completedAt: string | null
+}
+
+export type DriverReport = {
+  availableJobs: number
+  activeJobs: number
+  completedJobs: number
+  totalEarnings: number
+  earningRule: string
+}
+
 export type Store = {
   id: string
   sellerId: string

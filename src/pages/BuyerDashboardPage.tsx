@@ -75,7 +75,7 @@ export function BuyerDashboardPage({ token }: { token: string }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Badge className="border-emerald-100 bg-emerald-50 text-harbor">
-            Level 4 Buyer Report
+            Level 5 Buyer Tracking
           </Badge>
           <h1 className="mt-3 text-3xl font-bold text-ink">Buyer dashboard</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">

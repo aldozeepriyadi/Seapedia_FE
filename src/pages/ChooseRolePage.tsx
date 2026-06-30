@@ -8,8 +8,8 @@ import { Card } from '../components/ui/Card'
 const roleCopy: Record<Role, string> = {
   ADMIN: 'Konteks admin dikenali untuk pemisahan akses internal.',
   BUYER: 'Buyer dapat mengelola wallet, keranjang, checkout, dan order history.',
-  SELLER: 'Seller dapat membuat store, mengelola produk, dan memproses order pada Level 4.',
-  DRIVER: 'Konteks driver dikenali untuk fondasi delivery role.',
+  SELLER: 'Seller dapat membuat store, mengelola produk, memproses order, dan tracking delivery pada Level 5.',
+  DRIVER: 'Driver dapat mencari job, mengambil pengiriman, menyelesaikan delivery, dan melihat earning.',
 }
 
 export function ChooseRolePage() {

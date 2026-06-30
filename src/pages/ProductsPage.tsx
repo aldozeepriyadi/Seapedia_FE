@@ -84,7 +84,7 @@ export function ProductsPage() {
           <h1 className="mt-2 text-3xl font-bold text-ink">Products</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Guest bisa melihat listing dan detail produk secara read-only. Filter dan sort
-            membantu katalog terasa seperti marketplace modern pada Level 4.
+            membantu katalog terasa seperti marketplace modern pada Level 5.
           </p>
         </div>
       </div>

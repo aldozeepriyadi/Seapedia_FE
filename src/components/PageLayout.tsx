@@ -29,8 +29,8 @@ export function PageLayout() {
       </main>
       <footer className="border-t border-slate-200 bg-white">
         <div className="page-shell flex flex-col gap-2 py-6 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-          <p>SEAPEDIA Level 4 marketplace revision</p>
-          <p>Voucher, promo, PPN 12%, buyer reports, seller income, and order processing</p>
+          <p>SEAPEDIA Level 5 marketplace revision</p>
+          <p>Voucher, promo, PPN 12%, delivery jobs, driver earnings, and tracking</p>
         </div>
       </footer>
     </div>
