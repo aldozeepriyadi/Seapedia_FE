@@ -1,4 +1,13 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4100/api'
+const DEFAULT_API_URL = 'http://localhost:4100/api'
+
+function normalizeApiUrl(url: string) {
+  const cleanUrl = url.trim().replace(/\/+$/, '')
+
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`
+}
+
+const rawApiUrl = import.meta.env.VITE_API_URL?.trim() || DEFAULT_API_URL
+const API_URL = normalizeApiUrl(rawApiUrl)
 
 type ApiOptions = RequestInit & {
   token?: string | null

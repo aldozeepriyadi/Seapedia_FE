@@ -1,50 +1,43 @@
-# React + TypeScript + Vite
+# Seapedia Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend Seapedia dibuat dengan React, TypeScript, dan Vite.
 
-Currently, two official plugins are available:
+## Local Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+npm install
+npm run dev
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+Gunakan `.env` seperti ini saat backend jalan lokal:
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```env
+VITE_API_URL="http://localhost:4100/api"
 ```
+
+## Deploy ke Vercel
+
+Kalau repository GitHub berisi folder frontend ini langsung, kosongkan Root Directory di Vercel.
+
+Kalau repository GitHub berisi folder `Seapedia_BE_revisi` dan `Seapedia_FE_revisi` dalam satu repo besar, isi Root Directory:
+
+```text
+Seapedia_FE_revisi
+```
+
+Settings Vercel:
+
+```text
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+Environment variable production:
+
+```env
+VITE_API_URL="https://seapediabe-production.up.railway.app/api"
+```
+
+File `vercel.json` dipakai supaya route React seperti `/products`, `/dashboard`, dan `/seller/products` tidak 404 saat halaman di-refresh.
