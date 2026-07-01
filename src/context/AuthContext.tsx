@@ -23,7 +23,7 @@ type AuthContextValue = {
   user: User | null
   token: string | null
   loading: boolean
-  login: (username: string, password: string) => Promise<AuthResponse>
+  login: (identifier: string, password: string) => Promise<AuthResponse>
   register: (payload: RegisterPayload) => Promise<AuthResponse>
   selectRole: (role: Role) => Promise<User>
   logout: () => Promise<void>
@@ -71,10 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshProfile])
 
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (identifier: string, password: string) => {
       const response = await apiFetch<AuthResponse>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: identifier, password }),
       })
       saveSession(response.token, response.user)
       return response

@@ -16,6 +16,7 @@ Frontend Seapedia adalah aplikasi marketplace modern berbasis React untuk guest,
 - Public catalog dengan search, filter, sort, product card, dan product detail.
 - Public review form dan review list.
 - Auth flow: register, login, logout confirmation, profile, dan active role selection.
+- Login form menerima username atau email agar akun demo tetap fleksibel.
 - Buyer flow: cart terpisah, checkout terpisah, delivery address di checkout, wallet, order history, dan order detail.
 - Seller panel: overview, store, product management modal, order management, dan chart/summary.
 - Driver workspace: available jobs, active delivery, history, dan earnings.
@@ -131,6 +132,7 @@ Semua request lewat `src/lib/api.ts`.
 Auth state disimpan di `AuthContext`:
 
 - Token disimpan di localStorage.
+- Login mengirim satu input sebagai username/email ke endpoint `/auth/login`.
 - Setelah login/register, user diarahkan memilih active role jika punya lebih dari satu role.
 - Logout memanggil backend lalu membersihkan localStorage.
 

@@ -9,7 +9,7 @@ import { Input } from '../components/ui/Input'
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -20,7 +20,7 @@ export function LoginPage() {
     setError('')
 
     try {
-      const response = await login(username, password)
+      const response = await login(identifier, password)
       await showSuccess(
         'Login berhasil',
         response.requiresRoleSelection
@@ -46,8 +46,13 @@ export function LoginPage() {
         </p>
         <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
           <label className="grid gap-2 text-sm font-semibold text-slate-700">
-            Username
-            <Input value={username} onChange={(event) => setUsername(event.target.value)} />
+            Username atau email
+            <Input
+              autoComplete="username"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              placeholder="admin atau admin@seapedia.test"
+            />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-slate-700">
             Password
