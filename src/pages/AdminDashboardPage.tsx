@@ -258,6 +258,8 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
             <Metric icon={<Truck size={20} />} label="Delivery jobs" value={String(monitoring.summary.deliveryJobs)} />
           </div>
 
+          <AdminMonitoringCharts monitoring={monitoring} />
+
           <SimpleTable
             title="Users"
             headers={['Username', 'Email', 'Display name', 'Roles', 'Created']}
@@ -415,6 +417,249 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
       )}
     </WorkspacePanel>
   )
+}
+
+type ChartDatum = {
+  label: string
+  value: number
+  color: string
+}
+
+function AdminMonitoringCharts({ monitoring }: { monitoring: AdminMonitoringSnapshot }) {
+  const orderStatusData = buildCountData(
+    monitoring.recentOrders.map((item) => item.status),
+    chartPalette.status,
+  )
+  const deliveryStatusData = buildCountData(
+    monitoring.deliveryJobs.map((item) => item.jobStatus),
+    chartPalette.delivery,
+  )
+  const roleData = buildCountData(
+    monitoring.users.flatMap((item) => item.roles),
+    chartPalette.roles,
+  )
+  const categoryStockData = buildCategoryStockData(monitoring.products)
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-2">
+      <DonutChartCard
+        title="Order status"
+        description="Distribusi status dari order terbaru yang dipantau admin."
+        centerValue={String(monitoring.recentOrders.length)}
+        centerLabel="recent"
+        data={orderStatusData}
+        emptyText="Belum ada order terbaru."
+      />
+      <DonutChartCard
+        title="Delivery jobs"
+        description="Status pekerjaan driver dari order yang masuk ke delivery."
+        centerValue={String(monitoring.summary.deliveryJobs)}
+        centerLabel="jobs"
+        data={deliveryStatusData}
+        emptyText="Belum ada delivery job."
+      />
+      <BarChartCard
+        title="Role distribution"
+        description="Jumlah role yang dimiliki user marketplace."
+        data={roleData}
+        emptyText="Belum ada role user."
+      />
+      <BarChartCard
+        title="Catalog stock by category"
+        description="Akumulasi stock produk berdasarkan kategori catalog."
+        data={categoryStockData}
+        emptyText="Belum ada stock catalog."
+      />
+    </div>
+  )
+}
+
+function DonutChartCard({
+  title,
+  description,
+  centerValue,
+  centerLabel,
+  data,
+  emptyText,
+}: {
+  title: string
+  description: string
+  centerValue: string
+  centerLabel: string
+  data: ChartDatum[]
+  emptyText: string
+}) {
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+  const background = buildConicGradient(data)
+
+  return (
+    <Card className="p-5 shadow-soft">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+        <div className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full bg-slate-100">
+          {total > 0 && (
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{ background }}
+              aria-hidden="true"
+            />
+          )}
+          <div className="absolute inset-5 rounded-full bg-white shadow-inner" />
+          <div className="relative text-center">
+            <p className="text-2xl font-bold text-ink">{centerValue}</p>
+            <p className="text-xs font-bold uppercase text-slate-500">{centerLabel}</p>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-ink">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+          <div className="mt-4 grid gap-2">
+            {data.length > 0 ? (
+              data.map((item) => (
+                <ChartLegendRow key={item.label} item={item} total={total} />
+              ))
+            ) : (
+              <p className="rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-500">
+                {emptyText}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function BarChartCard({
+  title,
+  description,
+  data,
+  emptyText,
+}: {
+  title: string
+  description: string
+  data: ChartDatum[]
+  emptyText: string
+}) {
+  const maxValue = Math.max(...data.map((item) => item.value), 0)
+
+  return (
+    <Card className="p-5 shadow-soft">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-ink">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+        </div>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-sky-50 text-sky-700">
+          <LayoutDashboard size={20} />
+        </span>
+      </div>
+      <div className="mt-5 grid gap-4">
+        {data.length > 0 ? (
+          data.map((item) => {
+            const width = maxValue === 0 ? 0 : Math.max(8, Math.round((item.value / maxValue) * 100))
+
+            return (
+              <div key={item.label} className="grid gap-2">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate font-semibold text-ink">{item.label}</span>
+                  <span className="shrink-0 font-bold text-slate-600">{item.value}</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${width}%`, backgroundColor: item.color }}
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
+            )
+          })
+        ) : (
+          <p className="rounded-md bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-500">
+            {emptyText}
+          </p>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function ChartLegendRow({ item, total }: { item: ChartDatum; total: number }) {
+  const percentage = total === 0 ? 0 : Math.round((item.value / total) * 100)
+
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="flex min-w-0 items-center gap-2">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: item.color }}
+          aria-hidden="true"
+        />
+        <span className="truncate font-semibold text-slate-700">{item.label}</span>
+      </span>
+      <span className="shrink-0 font-bold text-ink">
+        {item.value} <span className="font-semibold text-slate-500">({percentage}%)</span>
+      </span>
+    </div>
+  )
+}
+
+const chartPalette = {
+  status: ['#0f766e', '#2563eb', '#f59e0b', '#ef4444', '#64748b', '#7c3aed'],
+  delivery: ['#0891b2', '#16a34a', '#f97316', '#dc2626', '#475569'],
+  roles: ['#0f766e', '#2563eb', '#d97706', '#be123c'],
+  category: ['#0f766e', '#0284c7', '#ca8a04', '#db2777', '#475569', '#9333ea'],
+}
+
+function buildCountData(values: string[], colors: string[]) {
+  const counts = values.reduce<Record<string, number>>((result, value) => {
+    const label = value || 'Unknown'
+    result[label] = (result[label] ?? 0) + 1
+    return result
+  }, {})
+
+  return Object.entries(counts)
+    .sort((first, second) => second[1] - first[1])
+    .map(([label, value], index) => ({
+      label,
+      value,
+      color: colors[index % colors.length],
+    }))
+}
+
+function buildCategoryStockData(products: AdminMonitoringSnapshot['products']) {
+  const counts = products.reduce<Record<string, number>>((result, product) => {
+    const label = product.category || 'General'
+    result[label] = (result[label] ?? 0) + product.stock
+    return result
+  }, {})
+
+  return Object.entries(counts)
+    .sort((first, second) => second[1] - first[1])
+    .slice(0, 6)
+    .map(([label, value], index) => ({
+      label,
+      value,
+      color: chartPalette.category[index % chartPalette.category.length],
+    }))
+}
+
+function buildConicGradient(data: ChartDatum[]) {
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+
+  if (total === 0) {
+    return '#e2e8f0'
+  }
+
+  let cursor = 0
+  const segments = data.map((item) => {
+    const start = cursor
+    const end = cursor + (item.value / total) * 100
+    cursor = end
+    return `${item.color} ${start}% ${end}%`
+  })
+
+  return `conic-gradient(${segments.join(', ')})`
 }
 
 function SimpleTable({
