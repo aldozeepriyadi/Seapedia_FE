@@ -82,6 +82,8 @@ export type CheckoutSummary = {
   ppn: number
   ppnRate: number
   finalTotal: number
+  storeCount?: number
+  itemCount?: number
 }
 
 export type OrderSummary = {

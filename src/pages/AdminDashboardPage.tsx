@@ -363,7 +363,7 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
             title={`Overdue candidates (${monitoring.overdueOrders.length})`}
             headers={['Order', 'Buyer', 'Store', 'Delivery', 'Deadline', 'Refund', 'Status']}
             rows={monitoring.overdueOrders.map((item) => [
-              shortId(item.id),
+              item.id,
               item.buyerName,
               item.storeName,
               item.deliveryMethod,
@@ -379,7 +379,7 @@ export function AdminDashboardPage({ token, view = 'overview' }: { token: string
               title={`Last processed refunds (${lastOverdueRun.processedCount})`}
               headers={['Order', 'Buyer', 'Store', 'Delivery', 'Refund', 'Final status']}
               rows={lastOverdueRun.processedOrders.map((item) => [
-                shortId(item.id),
+                item.id,
                 item.buyerName,
                 item.storeName,
                 item.deliveryMethod,

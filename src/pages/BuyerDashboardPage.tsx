@@ -136,7 +136,7 @@ export function BuyerDashboardPage({ token }: { token: string }) {
           <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-ink">Order history</h2>
-              <p className="text-sm text-slate-600">Order dibuat dari checkout single-store.</p>
+              <p className="text-sm text-slate-600">Order dibuat dari item cart yang dipilih.</p>
             </div>
             <Link to="/keranjang">
               <Button variant="secondary">

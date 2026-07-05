@@ -1,15 +1,23 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Home, MapPin, PackageCheck, TicketPercent } from 'lucide-react'
+import { ArrowLeft, Home, MapPin, PackageCheck, Store, TicketPercent } from 'lucide-react'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Input } from '../components/ui/Input'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
+import { clearCheckoutSelection, readCheckoutSelection } from '../lib/checkoutSelection'
 import { showConfirm, showError, showSuccess } from '../lib/alerts'
 import { formatPrice } from '../lib/format'
-import { BuyerAddress, CartSummary, CheckoutSummary, DeliveryMethod, WalletSummary } from '../types'
+import {
+  BuyerAddress,
+  CartItem,
+  CartSummary,
+  CheckoutSummary,
+  DeliveryMethod,
+  WalletSummary,
+} from '../types'
 
 const deliveryOptions: { value: DeliveryMethod; label: string; description: string }[] = [
   { value: 'Regular', label: 'Regular', description: 'Ongkir hemat untuk pengiriman standar.' },
@@ -17,10 +25,17 @@ const deliveryOptions: { value: DeliveryMethod; label: string; description: stri
   { value: 'Instant', label: 'Instant', description: 'Pengiriman tercepat untuk area tersedia.' },
 ]
 
+type CheckoutResponse = {
+  orderId: string
+  orderIds?: string[]
+  checkout: CheckoutSummary
+}
+
 export function CheckoutPage() {
   const { user, token } = useAuth()
   const navigate = useNavigate()
   const [cart, setCart] = useState<CartSummary | null>(null)
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [wallet, setWallet] = useState<WalletSummary | null>(null)
   const [addresses, setAddresses] = useState<BuyerAddress[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState('')
@@ -43,9 +58,18 @@ export function CheckoutPage() {
     () => addresses.find((address) => address.id === selectedAddressId),
     [addresses, selectedAddressId],
   )
+  const selectedItems = useMemo(
+    () => (cart?.items ?? []).filter((item) => selectedProductIds.includes(item.productId)),
+    [cart?.items, selectedProductIds],
+  )
+  const selectedGroups = useMemo(() => groupCartItems(selectedItems), [selectedItems])
+  const selectedKey = selectedProductIds.join('|')
 
-  async function previewCheckout(nextDiscountCode = appliedDiscountCode) {
-    if (!token) return
+  async function previewCheckout(
+    nextDiscountCode = appliedDiscountCode,
+    nextProductIds = selectedProductIds,
+  ) {
+    if (!token || nextProductIds.length === 0) return
 
     const response = await apiFetch<{ checkout: CheckoutSummary }>('/buyer/checkout/preview', {
       method: 'POST',
@@ -54,6 +78,7 @@ export function CheckoutPage() {
         addressId: selectedAddressId || 'preview',
         deliveryMethod,
         discountCode: nextDiscountCode.trim() || undefined,
+        productIds: nextProductIds,
       }),
     })
     setCheckout(response.checkout)
@@ -73,12 +98,19 @@ export function CheckoutPage() {
         apiFetch<{ addresses: BuyerAddress[] }>('/buyer/addresses', { token }),
       ])
       const defaultAddressId = addressResponse.addresses[0]?.id || ''
+      const cartProductIds = cartResponse.cart.items.map((item) => item.productId)
+      const savedProductIds = readCheckoutSelection(user?.id).filter((item) =>
+        cartProductIds.includes(item),
+      )
+      const nextSelectedProductIds = savedProductIds.length > 0 ? savedProductIds : cartProductIds
+
       setCart(cartResponse.cart)
       setWallet(walletResponse.wallet)
       setAddresses(addressResponse.addresses)
       setSelectedAddressId((current) => current || defaultAddressId)
+      setSelectedProductIds(nextSelectedProductIds)
 
-      if (cartResponse.cart.items.length > 0) {
+      if (nextSelectedProductIds.length > 0) {
         const preview = await apiFetch<{ checkout: CheckoutSummary }>('/buyer/checkout/preview', {
           method: 'POST',
           token,
@@ -86,6 +118,7 @@ export function CheckoutPage() {
             addressId: defaultAddressId || 'preview',
             deliveryMethod,
             discountCode: appliedDiscountCode.trim() || undefined,
+            productIds: nextSelectedProductIds,
           }),
         })
         setCheckout(preview.checkout)
@@ -103,7 +136,7 @@ export function CheckoutPage() {
   }, [token])
 
   useEffect(() => {
-    if (!token || !cart?.items.length) return
+    if (!token || !cart?.items.length || selectedProductIds.length === 0) return
 
     apiFetch<{ checkout: CheckoutSummary }>('/buyer/checkout/preview', {
       method: 'POST',
@@ -112,15 +145,23 @@ export function CheckoutPage() {
         addressId: selectedAddressId || 'preview',
         deliveryMethod,
         discountCode: appliedDiscountCode.trim() || undefined,
+        productIds: selectedProductIds,
       }),
     })
       .then((response) => setCheckout(response.checkout))
       .catch((err) => setError(err instanceof Error ? err.message : 'Preview checkout gagal.'))
-  }, [appliedDiscountCode, cart?.items.length, deliveryMethod, selectedAddressId, token])
+  }, [
+    appliedDiscountCode,
+    cart?.items.length,
+    deliveryMethod,
+    selectedAddressId,
+    selectedKey,
+    token,
+  ])
 
   async function handleApplyDiscount(event: FormEvent) {
     event.preventDefault()
-    if (!token || !cart?.items.length) return
+    if (!token || selectedProductIds.length === 0) return
 
     setSubmitting(true)
     try {
@@ -171,11 +212,11 @@ export function CheckoutPage() {
   }
 
   async function handleCheckout() {
-    if (!token || !selectedAddressId) return
+    if (!token || !selectedAddressId || selectedProductIds.length === 0) return
 
     const confirmed = await showConfirm(
       'Buat pesanan?',
-      'Wallet akan dipotong, stock produk dikurangi, dan order masuk ke history.',
+      'Wallet akan dipotong, stock produk pilihan dikurangi, dan order masuk ke history.',
       'Ya, checkout',
     )
 
@@ -185,21 +226,22 @@ export function CheckoutPage() {
     setError('')
 
     try {
-      const response = await apiFetch<{ orderId: string; checkout: CheckoutSummary }>(
-        '/buyer/checkout',
-        {
-          method: 'POST',
-          token,
-          body: JSON.stringify({
-            addressId: selectedAddressId,
-            deliveryMethod,
-            discountCode: appliedDiscountCode.trim() || undefined,
-          }),
-        },
-      )
+      const response = await apiFetch<CheckoutResponse>('/buyer/checkout', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({
+          addressId: selectedAddressId,
+          deliveryMethod,
+          discountCode: appliedDiscountCode.trim() || undefined,
+          productIds: selectedProductIds,
+        }),
+      })
+      clearCheckoutSelection(user?.id)
       await showSuccess(
         'Pesanan berhasil',
-        `Order ${response.orderId.slice(0, 12)} sudah dibuat dan masuk ke seller.`,
+        response.orderIds && response.orderIds.length > 1
+          ? `${response.orderIds.length} order dibuat untuk ${checkout?.storeCount ?? response.orderIds.length} toko.`
+          : `Order ${response.orderId.slice(0, 12)} sudah dibuat dan masuk ke seller.`,
       )
       navigate(`/orders/${response.orderId}`)
     } catch (err) {
@@ -226,11 +268,11 @@ export function CheckoutPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Badge className="border-emerald-100 bg-emerald-50 text-harbor">
-            Checkout
+            Checkout selected items
           </Badge>
           <h1 className="mt-3 text-3xl font-bold text-ink">Pembayaran</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Konfirmasi alamat, metode pengiriman, total PPN, dan pembayaran wallet.
+            Konfirmasi alamat, metode pengiriman, item pilihan, total PPN, dan pembayaran wallet.
           </p>
         </div>
         <Link to="/keranjang">
@@ -318,6 +360,47 @@ export function CheckoutPage() {
           </Card>
 
           <Card className="p-5 shadow-soft">
+            <h2 className="text-lg font-bold text-ink">Selected products</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Hanya produk yang dicentang di keranjang yang akan diproses.
+            </p>
+            <div className="mt-5 grid gap-4">
+              {selectedGroups.map((group) => (
+                <div key={group.storeId} className="rounded-md border border-slate-200 bg-white">
+                  <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3">
+                    <span className="grid h-9 w-9 place-items-center rounded-md bg-emerald-50 text-harbor">
+                      <Store size={17} />
+                    </span>
+                    <div>
+                      <p className="font-bold text-ink">{group.storeName}</p>
+                      <p className="text-xs font-semibold text-slate-500">{group.items.length} item</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {group.items.map((item) => (
+                      <div key={item.id} className="grid gap-3 px-4 py-3 sm:grid-cols-[3.5rem_1fr_auto] sm:items-center">
+                        <img src={item.image} alt={item.name} className="h-14 w-14 rounded-md object-cover" />
+                        <div>
+                          <p className="font-semibold text-ink">{item.name}</p>
+                          <p className="text-sm text-slate-500">
+                            {item.quantity} x {formatPrice(item.price)}
+                          </p>
+                        </div>
+                        <p className="font-bold text-harbor">{formatPrice(item.subtotal)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {!selectedGroups.length && (
+                <p className="rounded-md bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                  Tidak ada produk terpilih. Kembali ke keranjang dan centang produk untuk checkout.
+                </p>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-5 shadow-soft">
             <h2 className="text-lg font-bold text-ink">Delivery method</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {deliveryOptions.map((option) => (
@@ -347,7 +430,9 @@ export function CheckoutPage() {
             <>
               <div className="mt-5 grid gap-3 text-sm">
                 <SummaryRow label="Wallet" value={formatPrice(wallet?.balance ?? 0)} />
-                <SummaryRow label="Subtotal" value={formatPrice(checkout?.subtotal ?? cart?.subtotal ?? 0)} />
+                <SummaryRow label="Selected item" value={`${selectedItems.length} item`} />
+                <SummaryRow label="Store shipment" value={`${checkout?.storeCount ?? selectedGroups.length} toko`} />
+                <SummaryRow label="Subtotal" value={formatPrice(checkout?.subtotal ?? 0)} />
                 <form className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3" onSubmit={handleApplyDiscount}>
                   <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
                     Voucher / Promo
@@ -358,7 +443,7 @@ export function CheckoutPage() {
                       onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
                       placeholder="WELCOME50 / PROMO25"
                     />
-                    <Button variant="secondary" disabled={submitting || !cart?.items.length}>
+                    <Button variant="secondary" disabled={submitting || selectedProductIds.length === 0}>
                       <TicketPercent size={16} />
                       Apply
                     </Button>
@@ -383,7 +468,7 @@ export function CheckoutPage() {
               </div>
               <Button
                 className="mt-5 w-full"
-                disabled={!cart?.items.length || !selectedAddressId || submitting}
+                disabled={selectedProductIds.length === 0 || !selectedAddressId || submitting}
                 onClick={handleCheckout}
               >
                 <PackageCheck size={16} />
@@ -395,6 +480,27 @@ export function CheckoutPage() {
       </div>
     </section>
   )
+}
+
+function groupCartItems(items: CartItem[]) {
+  const groups = new Map<string, { storeId: string; storeName: string; items: CartItem[] }>()
+
+  for (const item of items) {
+    const existing = groups.get(item.storeId)
+
+    if (existing) {
+      existing.items.push(item)
+      continue
+    }
+
+    groups.set(item.storeId, {
+      storeId: item.storeId,
+      storeName: item.storeName,
+      items: [item],
+    })
+  }
+
+  return Array.from(groups.values())
 }
 
 function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {

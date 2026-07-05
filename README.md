@@ -17,7 +17,7 @@ Frontend Seapedia adalah aplikasi marketplace modern berbasis React untuk guest,
 - Public review form dan review list.
 - Auth flow: register, login, logout confirmation, profile, dan active role selection.
 - Login form menerima username atau email agar akun demo tetap fleksibel.
-- Buyer flow: cart terpisah, checkout terpisah, delivery address di checkout, wallet, order history, dan order detail.
+- Buyer flow: cart multi-toko dengan checkbox item/toko, checkout item terpilih, delivery address di checkout, wallet, order history, dan order detail.
 - Seller panel: overview, store, product management modal, order management, dan chart/summary.
 - Driver workspace: available jobs, active delivery, history, dan earnings.
 - Admin panel: monitoring, overdue handling, voucher management, promo management, datatable, modal, dan SweetAlert.
@@ -173,7 +173,7 @@ File `vercel.json` berisi rewrite ke `/` supaya client-side route seperti `/prod
 - Halaman route 404 setelah refresh: pastikan `vercel.json` ikut ke-commit dan deploy ulang.
 - Data kosong di catalog: cek endpoint `/api/products` backend.
 - Login berhasil tapi dashboard salah role: masuk ke `/choose-role` dan pilih active role yang sesuai.
-- Checkout gagal: cek wallet balance, address, cart item, stock, dan discount code masih aktif.
+- Checkout gagal: cek wallet balance, address, item terpilih, stock, dan discount code masih aktif.
 
 ## Build Check
 

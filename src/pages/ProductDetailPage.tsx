@@ -131,8 +131,8 @@ export function ProductDetailPage() {
               <div>
                 <h2 className="font-bold text-ink">Public catalog</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Guest boleh melihat produk. Buyer dapat menambahkan produk ke keranjang
-                  dengan rule single-store.
+                  Guest boleh melihat produk. Buyer dapat menambahkan produk dari banyak toko,
+                  lalu memilih item mana yang ingin di-checkout.
                 </p>
               </div>
             </div>
